@@ -496,8 +496,8 @@
       mediaUrl = data.data.download_url;
     } else if (data.media?.[0]?.url) {
       mediaUrl = data.media[0].url;
-    } } else if (data.data?.medias?.[0]?.url) {
-      mediaUrl = data.data.media[0].url;
+    } else if (data.data?.medias?.[0]?.url) {
+      mediaUrl = data.data.medias[0].url;
     }
 
     if (!mediaUrl) {
@@ -523,9 +523,9 @@
     } finally {
     button.disabled = false;
     button.textContent = "Download";
-  }
+      }
     }
-    }
+    
   </script>
 
 </body>
