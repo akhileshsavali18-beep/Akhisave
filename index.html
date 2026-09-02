@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AkhiSave - Download Instagram photos, reels, videos, stories and profiles easily.">
+  <title>AkhiSave - Instagram Downloader</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f7f8fc;
+      color: #111827;
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .nav {
+      max-width: 1100px;
+      margin: auto;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      color: #111827;
+      text-decoration: none;
+    }
+
+    .logo span {
+      color: #e11d48;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .nav-links a {
+      color: #374151;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .nav-links a:hover {
+      color: #e11d48;
+    }
+
+    .hero {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 80px 20px 55px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #ffe4e6;
+      color: #be123c;
+      padding: 8px 14px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: clamp(38px, 7vw, 68px);
+      line-height: 1.05;
+      margin-bottom: 20px;
+      letter-spacing: -2px;
+    }
+
+    h1 span {
+      color: #e11d48;
+    }
+
+    .hero p {
+      max-width: 650px;
+      margin: 0 auto 35px;
+      color: #6b7280;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    .download-box {
+      max-width: 720px;
+      margin: auto;
+      background: white;
+      padding: 10px;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+      display: flex;
+      gap: 10px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .download-box input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      padding: 16px;
+      font-size: 15px;
+      background: transparent;
+    }
+
+    .download-btn {
+      border: none;
+      background: #e11d48;
+      color: white;
+      padding: 0 25px;
+      border-radius: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .download-btn:hover {
+      background: #be123c;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    .tools {
+      max-width: 1100px;
+      margin: 20px auto 80px;
+      padding: 0 20px;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .section-title h2 {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .section-title p {
+      color: #6b7280;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 15px;
+    }
+
+    .tool-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 15px;
+      padding: 25px 15px;
+      text-align: center;
+      transition: 0.2s;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.07);
+    }
+
+    .tool-icon {
+      font-size: 30px;
+      margin-bottom: 12px;
+    }
+
+    .tool-card h3 {
+      font-size: 15px;
+      margin-bottom: 7px;
+    }
+
+    .tool-card p {
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .features {
+      background: white;
+      padding: 70px 20px;
+      border-top: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .feature-grid {
+      max-width: 1000px;
+      margin: auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 25px;
+    }
+
+    .feature {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 15px;
+    }
+
+    .feature h3 {
+      margin-bottom: 10px;
+    }
+
+    .feature p {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    footer {
+      background: #111827;
+      color: #9ca3af;
+      text-align: center;
+      padding: 35px 20px;
+    }
+
+    footer strong {
+      color: white;
+    }
+
+    .footer-links {
+      margin-top: 15px;
+    }
+
+    .footer-links a {
+      color: #9ca3af;
+      text-decoration: none;
+      margin: 0 10px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 800px) {
+      .tool-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .nav {
+        height: 60px;
+      }
+
+      .nav-links {
+        gap: 12px;
+      }
+
+      .nav-links a {
+        font-size: 12px;
+      }
+
+      .hero {
+        padding-top: 55px;
+      }
+
+      .download-box {
+        flex-direction: column;
+        padding: 8px;
+      }
+
+      .download-btn {
+        height: 50px;
+      }
+
+      .download-box input {
+        width: 100%;
+      }
+
+      .tool-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <nav class="nav">
+      <a href="/" class="logo">Akhi<span>Save</span></a>
+
+      <div class="nav-links">
+        <a href="#tools">Tools</a>
+        <a href="#features">Features</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+
+    <section class="hero">
+      <div class="badge">⚡ Fast & Simple Downloader</div>
+
+      <h1>
+        Instagram<br>
+        <span>Downloader</span>
+      </h1>
+
+      <p>
+        Download Instagram photos, reels, videos, stories and profiles
+        quickly and easily with AkhiSave.
+      </p>
+
+      <div class="download-box">
+        <input
+          id="urlInput"
+          type="url"
+          placeholder="Paste Instagram URL here..."
+          autocomplete="off"
+        >
+
+        <button class="download-btn" onclick="downloadMedia()">
+          Download
+        </button>
+      </div>
+
+      <div id="message"></div>
+    </section>
+
+
+    <section class="tools" id="tools">
+
+      <div class="section-title">
+        <h2>Instagram Tools</h2>
+        <p>Choose what you want to download</p>
+      </div>
+
+      <div class="tool-grid">
+
+        <div class="tool-card">
+          <div class="tool-icon">📷</div>
+          <h3>Photo</h3>
+          <p>Download Instagram photos.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">🎬</div>
+          <h3>Reels</h3>
+          <p>Save Instagram reels.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">🎥</div>
+          <h3>Video</h3>
+          <p>Download Instagram videos.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">⭕</div>
+          <h3>Story</h3>
+          <p>Save public Instagram stories.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">👤</div>
+          <h3>Profile</h3>
+          <p>Get public profile media.</p>
+        </div>
+
+      </div>
+    </section>
+
+
+    <section class="features" id="features">
+
+      <div class="section-title">
+        <h2>Why AkhiSave?</h2>
+        <p>Simple tools without unnecessary steps.</p>
+      </div>
+
+      <div class="feature-grid">
+
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <h3>Fast</h3>
+          <p>
+            Designed for a quick and simple downloading experience.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">📱</div>
+          <h3>Mobile Friendly</h3>
+          <p>
+            Works with a clean responsive design on phones and computers.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">🔒</div>
+          <h3>Privacy Focused</h3>
+          <p>
+            We aim to keep the downloading process simple and privacy-friendly.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+
+  <footer>
+    <p>
+      © 2026 <strong>AkhiSave</strong>. All rights reserved.
+    </p>
+
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">DMCA</a>
+    </div>
+  </footer>
+
+
+  <script>
+    function downloadMedia() {
+
+      const input = document.getElementById("urlInput");
+      const message = document.getElementById("message");
+
+      const url = input.value.trim();
+
+      if (!url) {
+        message.textContent = "Please paste an Instagram URL.";
+        message.style.color = "#dc2626";
+        return;
+      }
+
+      if (!url.includes("instagram.com")) {
+        message.textContent = "Please enter a valid Instagram URL.";
+        message.style.color = "#dc2626";
+        return;
+      }
+
+      message.textContent = "Downloader API will be connected soon...";
+      message.style.color = "#6b7280";
+    }
+  </script>
+
+</body>
+</html>
