@@ -445,27 +445,86 @@
 
 
   <script>
-    function downloadMedia() {
+    async function downloadMedia() {
+  const input = document.getElementById("urlInput");
+  const message = document.getElementById("message");
+  const button = document.querySelector(".download-btn");
 
-      const input = document.getElementById("urlInput");
-      const message = document.getElementById("message");
+  const url = input.value.trim();
 
-      const url = input.value.trim();
+  if (!url) {
+    message.textContent = "Please paste an Instagram URL.";
+    message.style.color = "#dc2626";
+    return;
+  }
 
-      if (!url) {
-        message.textContent = "Please paste an Instagram URL.";
-        message.style.color = "#dc2626";
-        return;
-      }
+  if (!/^https?:\/\/(www\.)?instagram\.com\//i.test(url)) {
+    message.textContent = "Please enter a valid Instagram URL.";
+    message.style.color = "#dc2626";
+    return;
+  }
 
-      if (!url.includes("instagram.com")) {
-        message.textContent = "Please enter a valid Instagram URL.";
-        message.style.color = "#dc2626";
-        return;
-      }
+  button.disabled = true;
+  button.textContent = "Processing...";
+  message.textContent = "Fetching media...";
+  message.style.color = "#6b7280";
 
-      message.textContent = "Downloader API will be connected soon...";
-      message.style.color = "#6b7280";
+  try {
+    const response = await fetch("/api/download", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ url })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Download failed.");
+    }
+
+    let mediaUrl = null;
+
+    if (data.url) {
+      mediaUrl = data.url;
+    } else if (data.download_url) {
+      mediaUrl = data.download_url;
+    } else if (data.data?.url) {
+      mediaUrl = data.data.url;
+    } else if (data.data?.download_url) {
+      mediaUrl = data.data.download_url;
+    } else if (data.media?.[0]?.url) {
+      mediaUrl = data.media[0].url;
+    } else if (data.data?.media?.[0]?.url) {
+      mediaUrl = data.data.media[0].url;
+    }
+
+    if (!mediaUrl) {
+      console.log("API response:", data);
+      throw new Error("Media was found, but no download link was returned.");
+    }
+
+    message.textContent = "Media ready! Starting download...";
+    message.style.color = "#16a34a";
+
+    const link = document.createElement("a");
+    link.href = mediaUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+  } catch (error) {
+    message.textContent = error.message || "Something went wrong.";
+    message.style.color = "#dc2626";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Download";
+  }
+    }
     }
   </script>
 
