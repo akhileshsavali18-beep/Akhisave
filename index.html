@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AkhiSave - Download Instagram photos, reels, videos, stories and profiles easily.">
+
+  <meta
+    name="description"
+    content="AkhiSave - Download Instagram photos, reels, videos, stories and profiles easily."
+  >
+
   <title>AkhiSave - Instagram Downloader</title>
 
   <style>
@@ -101,19 +106,25 @@
       line-height: 1.6;
     }
 
-    .download-box {
+    .download-box,
+    .profile-box {
       max-width: 720px;
       margin: auto;
       background: white;
       padding: 10px;
       border-radius: 16px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
       display: flex;
       gap: 10px;
       border: 1px solid #e5e7eb;
     }
 
-    .download-box input {
+    .profile-box {
+      margin-top: 15px;
+    }
+
+    .download-box input,
+    .profile-box input {
       flex: 1;
       min-width: 0;
       border: none;
@@ -123,9 +134,9 @@
       background: transparent;
     }
 
-    .download-btn {
+    .download-btn,
+    .profile-btn {
       border: none;
-      background: #e11d48;
       color: white;
       padding: 0 25px;
       border-radius: 11px;
@@ -134,8 +145,25 @@
       font-size: 15px;
     }
 
+    .download-btn {
+      background: #e11d48;
+    }
+
     .download-btn:hover {
       background: #be123c;
+    }
+
+    .profile-btn {
+      background: #111827;
+    }
+
+    .profile-btn:hover {
+      background: #374151;
+    }
+
+    .download-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
     }
 
     #message {
@@ -181,7 +209,7 @@
 
     .tool-card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.07);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.07);
     }
 
     .tool-icon {
@@ -284,16 +312,19 @@
         padding-top: 55px;
       }
 
-      .download-box {
+      .download-box,
+      .profile-box {
         flex-direction: column;
         padding: 8px;
       }
 
-      .download-btn {
+      .download-btn,
+      .profile-btn {
         height: 50px;
       }
 
-      .download-box input {
+      .download-box input,
+      .profile-box input {
         width: 100%;
       }
 
@@ -308,7 +339,9 @@
 
   <header>
     <nav class="nav">
-      <a href="/" class="logo">Akhi<span>Save</span></a>
+      <a href="/" class="logo">
+        Akhi<span>Save</span>
+      </a>
 
       <div class="nav-links">
         <a href="#tools">Tools</a>
@@ -320,7 +353,10 @@
   <main>
 
     <section class="hero">
-      <div class="badge">⚡ Fast & Simple Downloader</div>
+
+      <div class="badge">
+        ⚡ Fast & Simple Downloader
+      </div>
 
       <h1>
         Instagram<br>
@@ -332,7 +368,9 @@
         quickly and easily with AkhiSave.
       </p>
 
+      <!-- Instagram URL -->
       <div class="download-box">
+
         <input
           id="urlInput"
           type="url"
@@ -340,21 +378,53 @@
           autocomplete="off"
         >
 
-        <button class="download-btn" onclick="downloadMedia()">
+        <button
+          class="download-btn"
+          onclick="downloadMedia()"
+        >
           Download
         </button>
+
+      </div>
+
+      <!-- Instagram Username -->
+      <div class="profile-box">
+
+        <input
+          id="usernameInput"
+          type="text"
+          placeholder="Enter Instagram username..."
+          autocomplete="off"
+        >
+
+        <button
+          class="profile-btn"
+          onclick="openProfile()"
+        >
+          Open Profile
+        </button>
+
       </div>
 
       <div id="message"></div>
+
     </section>
 
+
+    <!-- Instagram Tools -->
 
     <section class="tools" id="tools">
 
       <div class="section-title">
+
         <h2>Instagram Tools</h2>
-        <p>Choose what you want to download</p>
+
+        <p>
+          Choose what you want to download
+        </p>
+
       </div>
+
 
       <div class="tool-grid">
 
@@ -364,11 +434,13 @@
           <p>Download Instagram photos.</p>
         </div>
 
+
         <div class="tool-card">
           <div class="tool-icon">🎬</div>
           <h3>Reels</h3>
           <p>Save Instagram reels.</p>
         </div>
+
 
         <div class="tool-card">
           <div class="tool-icon">🎥</div>
@@ -376,11 +448,13 @@
           <p>Download Instagram videos.</p>
         </div>
 
+
         <div class="tool-card">
           <div class="tool-icon">⭕</div>
           <h3>Story</h3>
           <p>Save public Instagram stories.</p>
         </div>
+
 
         <div class="tool-card">
           <div class="tool-icon">👤</div>
@@ -389,143 +463,397 @@
         </div>
 
       </div>
+
     </section>
 
+
+    <!-- Features -->
 
     <section class="features" id="features">
 
       <div class="section-title">
+
         <h2>Why AkhiSave?</h2>
-        <p>Simple tools without unnecessary steps.</p>
+
+        <p>
+          Simple tools without unnecessary steps.
+        </p>
+
       </div>
+
 
       <div class="feature-grid">
 
         <div class="feature">
-          <div class="feature-icon">⚡</div>
-          <h3>Fast</h3>
+
+          <div class="feature-icon">
+            ⚡
+          </div>
+
+          <h3>
+            Fast
+          </h3>
+
           <p>
             Designed for a quick and simple downloading experience.
           </p>
+
         </div>
 
+
         <div class="feature">
-          <div class="feature-icon">📱</div>
-          <h3>Mobile Friendly</h3>
+
+          <div class="feature-icon">
+            📱
+          </div>
+
+          <h3>
+            Mobile Friendly
+          </h3>
+
           <p>
             Works with a clean responsive design on phones and computers.
           </p>
+
         </div>
 
+
         <div class="feature">
-          <div class="feature-icon">🔒</div>
-          <h3>Privacy Focused</h3>
+
+          <div class="feature-icon">
+            🔒
+          </div>
+
+          <h3>
+            Privacy Focused
+          </h3>
+
           <p>
             We aim to keep the downloading process simple and privacy-friendly.
           </p>
+
         </div>
 
       </div>
+
     </section>
 
   </main>
 
 
+  <!-- Footer -->
+
   <footer>
+
     <p>
-      © 2026 <strong>AkhiSave</strong>. All rights reserved.
+      © 2026
+      <strong>AkhiSave</strong>.
+      All rights reserved.
     </p>
 
     <div class="footer-links">
-      <a href="#">Privacy</a>
-      <a href="#">Terms</a>
-      <a href="#">DMCA</a>
+
+      <a href="#">
+        Privacy
+      </a>
+
+      <a href="#">
+        Terms
+      </a>
+
+      <a href="#">
+        DMCA
+      </a>
+
     </div>
+
   </footer>
 
 
   <script>
+
+    // ==========================================
+    // Instagram Downloader
+    // ==========================================
+
     async function downloadMedia() {
-  const input = document.getElementById("urlInput");
-  const message = document.getElementById("message");
-  const button = document.querySelector(".download-btn");
 
-  const url = input.value.trim();
+      const input =
+        document.getElementById("urlInput");
 
-  if (!url) {
-    message.textContent = "Please paste an Instagram URL.";
-    message.style.color = "#dc2626";
-    return;
-  }
+      const message =
+        document.getElementById("message");
 
-  if (!/^https?:\/\/(www\.)?instagram\.com\//i.test(url)) {
-    message.textContent = "Please enter a valid Instagram URL.";
-    message.style.color = "#dc2626";
-    return;
-  }
+      const button =
+        document.querySelector(".download-btn");
 
-  button.disabled = true;
-  button.textContent = "Processing...";
-  message.textContent = "Fetching media...";
-  message.style.color = "#6b7280";
 
-  try {
-    const response = await fetch("/api/download", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ url })
-    });
+      const url =
+        input.value.trim();
 
-    const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error || "Download failed.");
-    }
+      // Empty URL
 
-    let mediaUrl = null;
+      if (!url) {
 
-    if (data.url) {
-      mediaUrl = data.url;
-    } else if (data.download_url) {
-      mediaUrl = data.download_url;
-    } else if (data.data?.url) {
-      mediaUrl = data.data.url;
-    } else if (data.data?.download_url) {
-      mediaUrl = data.data.download_url;
-    } else if (data.media?.[0]?.url) {
-      mediaUrl = data.media[0].url;
-    } else if (data.data?.medias?.[0]?.url) {
-      mediaUrl = data.data.medias[0].url;
-    }
+        message.textContent =
+          "Please paste an Instagram URL.";
 
-    if (!mediaUrl) {
-      console.log("API response:", data);
-      throw new Error("Media was found, but no download link was returned.");
-    }
+        message.style.color =
+          "#dc2626";
 
-    message.textContent = "Media ready! Starting download...";
-    message.style.color = "#16a34a";
-
-    const link = document.createElement("a");
-    link.href = mediaUrl;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.download = "";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-  } catch (error) {
-    message.textContent = error.message || "Something went wrong.";
-    message.style.color = "#dc2626";
-    } finally {
-    button.disabled = false;
-    button.textContent = "Download";
+        return;
       }
+
+
+      // Instagram URL validation
+
+      if (
+        !/^https?:\/\/(www\.)?instagram\.com\//i.test(url)
+      ) {
+
+        message.textContent =
+          "Please enter a valid Instagram URL.";
+
+        message.style.color =
+          "#dc2626";
+
+        return;
+      }
+
+
+      button.disabled = true;
+
+      button.textContent =
+        "Processing...";
+
+      message.textContent =
+        "Fetching media...";
+
+      message.style.color =
+        "#6b7280";
+
+
+      try {
+
+        const response =
+          await fetch(
+            "/api/download",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify({
+                  url: url
+                })
+            }
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            data.error ||
+            "Download failed."
+          );
+
+        }
+
+
+        // ======================================
+        // Find media URL from API response
+        // ======================================
+
+        let mediaUrl = null;
+
+
+        if (data.url) {
+
+          mediaUrl =
+            data.url;
+
+        }
+
+        else if (data.download_url) {
+
+          mediaUrl =
+            data.download_url;
+
+        }
+
+        else if (data.data?.url) {
+
+          mediaUrl =
+            data.data.url;
+
+        }
+
+        else if (data.data?.download_url) {
+
+          mediaUrl =
+            data.data.download_url;
+
+        }
+
+        else if (data.media?.[0]?.url) {
+
+          mediaUrl =
+            data.media[0].url;
+
+        }
+
+        else if (data.data?.medias?.[0]?.url) {
+
+          mediaUrl =
+            data.data.medias[0].url;
+
+        }
+
+
+        if (!mediaUrl) {
+
+          console.log(
+            "API response:",
+            data
+          );
+
+          throw new Error(
+            "Media was found, but no download link was returned."
+          );
+
+        }
+
+
+        message.textContent =
+          "Media ready! Opening download...";
+
+        message.style.color =
+          "#16a34a";
+
+
+        // Open media URL
+
+        const link =
+          document.createElement("a");
+
+        link.href =
+          mediaUrl;
+
+        link.target =
+          "_blank";
+
+        link.rel =
+          "noopener";
+
+        link.download =
+          "";
+
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+
+        link.remove();
+
+
+      }
+
+      catch (error) {
+
+        message.textContent =
+          error.message ||
+          "Something went wrong.";
+
+        message.style.color =
+          "#dc2626";
+
+      }
+
+      finally {
+
+        button.disabled =
+          false;
+
+        button.textContent =
+          "Download";
+
+      }
+
     }
-    
+
+
+    // ==========================================
+    // Instagram Profile
+    // ==========================================
+
+    function openProfile() {
+
+      const input =
+        document.getElementById(
+          "usernameInput"
+        );
+
+
+      let username =
+        input.value.trim();
+
+
+      // Empty username
+
+      if (!username) {
+
+        alert(
+          "Please enter an Instagram username."
+        );
+
+        return;
+
+      }
+
+
+      // Remove @ if user enters @username
+
+      username =
+        username.replace(/^@/, "");
+
+
+      // Validate username
+
+      if (
+        !/^[a-zA-Z0-9._]+$/.test(username)
+      ) {
+
+        alert(
+          "Please enter a valid Instagram username."
+        );
+
+        return;
+
+      }
+
+
+      // Open Instagram profile
+
+      window.open(
+        "https://www.instagram.com/" +
+        encodeURIComponent(username) +
+        "/",
+        "_blank"
+      );
+
+    }
+
   </script>
 
 </body>
