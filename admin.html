@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel | AkhiSave</title>
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f7fb;color:#172033}.wrap{max-width:1100px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}.brand{font-size:26px;font-weight:800}.brand span{color:#ff3b72}.muted{color:#697386}.card{background:#fff;border:1px solid #e6eaf0;border-radius:16px;padding:22px;box-shadow:0 8px 30px rgba(20,30,50,.05)}.login{max-width:430px;margin:12vh auto}.input{width:100%;padding:14px;border:1px solid #d8dee8;border-radius:10px;font-size:16px;margin:10px 0 14px}.btn{border:0;border-radius:10px;padding:12px 17px;font-weight:700;cursor:pointer;background:#172033;color:#fff}.btn.secondary{background:#eef1f6;color:#172033}.error{color:#c62828;margin-top:10px}.hidden{display:none}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.stat{font-size:28px;font-weight:800;margin-top:8px}.section{margin-top:20px}.row{display:flex;justify-content:space-between;align-items:center;padding:15px 0;border-bottom:1px solid #edf0f4}.row:last-child{border-bottom:0}.pill{padding:6px 10px;border-radius:999px;background:#eaf7ee;color:#18753c;font-size:13px;font-weight:700}.danger{background:#fff0f0;color:#b42318}.small{font-size:13px}@media(max-width:700px){.wrap{padding:16px}.grid{grid-template-columns:1fr}.top{align-items:flex-start}.row{gap:12px}.row button{flex-shrink:0}}
+  </style>
+</head>
+<body>
+  <div id="loginView" class="wrap">
+    <div class="card login">
+      <div class="brand">Akhi<span>Save</span></div>
+      <h1>Admin Panel</h1>
+      <p class="muted">Private management area. Enter your admin password.</p>
+      <form id="loginForm">
+        <input id="password" class="input" type="password" autocomplete="current-password" placeholder="Admin password" required>
+        <button class="btn" type="submit">Login</button>
+      </form>
+      <div id="loginError" class="error"></div>
+    </div>
+  </div>
+
+  <div id="adminView" class="wrap hidden">
+    <div class="top">
+      <div><div class="brand">Akhi<span>Save</span></div><div class="muted small">Admin Dashboard</div></div>
+      <button id="logout" class="btn secondary">Logout</button>
+    </div>
+
+    <div class="grid">
+      <div class="card"><div class="muted">Website</div><div class="stat">Online</div><div class="pill">akhisave.online</div></div>
+      <div class="card"><div class="muted">Downloader API</div><div id="downloadStatus" class="stat">Checking…</div></div>
+      <div class="card"><div class="muted">Instagram API</div><div id="instagramStatus" class="stat">Checking…</div></div>
+    </div>
+
+    <div class="section card">
+      <h2>Tools</h2>
+      <div class="row"><div><b>Instagram Downloader</b><div class="muted small">Photo, Reels, Video, Story & Profile</div></div><span class="pill">ACTIVE</span></div>
+      <div class="row"><div><b>YouTube Downloader</b><div class="muted small">Future tool</div></div><span class="pill danger">NOT ADDED</span></div>
+      <div class="row"><div><b>Facebook Downloader</b><div class="muted small">Future tool</div></div><span class="pill danger">NOT ADDED</span></div>
+      <div class="row"><div><b>TikTok Downloader</b><div class="muted small">Future tool</div></div><span class="pill danger">NOT ADDED</span></div>
+    </div>
+
+    <div class="section card">
+      <h2>Ads</h2>
+      <div class="row"><div><b>Monetag In-Page Push</b><div class="muted small">Zone 11717101</div></div><span class="pill">ACTIVE</span></div>
+      <p class="muted small">Ad ON/OFF controls will be connected to Cloudflare storage in the next admin step.</p>
+    </div>
+
+    <div class="section card">
+      <h2>Site Management</h2>
+      <div class="row"><div><b>SEO pages</b><div class="muted small">FAQ, Instagram Downloader Guide, Privacy, Terms, DMCA, Contact</div></div><a class="btn secondary" href="/faq.html">Open FAQ</a></div>
+      <div class="row"><div><b>Google indexing</b><div class="muted small">Homepage indexing has been requested in Search Console.</div></div><span class="pill">SUBMITTED</span></div>
+    </div>
+  </div>
+
+<script>
+async function api(path, options={}){
+  const r=await fetch(path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
+  let data={};try{data=await r.json()}catch{}
+  return {ok:r.ok,data};
+}
+async function checkSession(){
+  const r=await api('/api/admin/status');
+  if(r.ok) showAdmin(); else showLogin();
+}
+function showLogin(){document.getElementById('loginView').classList.remove('hidden');document.getElementById('adminView').classList.add('hidden')}
+function showAdmin(){document.getElementById('loginView').classList.add('hidden');document.getElementById('adminView').classList.remove('hidden');loadStatus()}
+async function loadStatus(){
+  const r=await api('/api/admin/status');
+  if(!r.ok)return showLogin();
+  document.getElementById('downloadStatus').textContent=r.data.downloader?'Ready':'Not configured';
+  document.getElementById('instagramStatus').textContent=r.data.instagram?'Ready':'Not configured';
+}
+document.getElementById('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const err=document.getElementById('loginError');err.textContent='';
+  const r=await api('/api/admin/login',{method:'POST',body:JSON.stringify({password:document.getElementById('password').value})});
+  if(r.ok){document.getElementById('password').value='';showAdmin()}else err.textContent=r.data.error||'Login failed.';
+});
+document.getElementById('logout').addEventListener('click',async()=>{await api('/api/admin/logout',{method:'POST'});showLogin()});
+checkSession();
+</script>
+</body>
+</html>
