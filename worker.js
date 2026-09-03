@@ -2,254 +2,210 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // =====================================================
-    // INSTAGRAM MEDIA DOWNLOADER - SOCLIP
-    // =====================================================
+    // -----------------------------------------------------
+    // SoClip media resolver
+    // -----------------------------------------------------
     if (url.pathname === "/api/download") {
-      if (request.method !== "POST") {
-        return Response.json(
-          { success: false, error: "Method not allowed" },
-          { status: 405 }
-        );
-      }
+      if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
 
       try {
         const body = await request.json();
         const instagramUrl = String(body.url || "").trim();
-
-        if (!instagramUrl) {
-          return Response.json(
-            { success: false, error: "Instagram URL is required." },
-            { status: 400 }
-          );
+        if (!isInstagramUrl(instagramUrl)) {
+          return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
         }
-
-        if (!/^https?:\/\/(www\.)?instagram\.com\//i.test(instagramUrl)) {
-          return Response.json(
-            { success: false, error: "Please enter a valid Instagram URL." },
-            { status: 400 }
-          );
-        }
-
         if (!env.SOCLIP_API_KEY) {
-          return Response.json(
-            { success: false, error: "Downloader is not configured yet." },
-            { status: 503 }
-          );
+          return json({ success: false, error: "Downloader is not configured yet." }, 503);
         }
 
-        const apiResponse = await fetch(
-          "https://api.soclip.dev/v1/media",
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${env.SOCLIP_API_KEY}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              url: instagramUrl
-            })
-          }
-        );
-
-        const data = await apiResponse.json();
-
-        return Response.json(data, {
-          status: apiResponse.status,
+        const r = await fetch("https://api.soclip.dev/v1/media", {
+          method: "POST",
           headers: {
-            "Cache-Control": "no-store"
-          }
-        });
-
-      } catch (error) {
-        return Response.json(
-          {
-            success: false,
-            error: "Something went wrong. Please try again."
+            Authorization: `Bearer ${env.SOCLIP_API_KEY}`,
+            "Content-Type": "application/json"
           },
-          { status: 500 }
-        );
+          body: JSON.stringify({ url: instagramUrl })
+        });
+        const data = await safeJson(r);
+        return json(data, r.status);
+      } catch (e) {
+        return json({ success: false, error: "Something went wrong. Please try again." }, 500);
       }
     }
 
+    // -----------------------------------------------------
+    // Download a resolved media file through AkhiSave.
+    // This avoids relying on the browser's cross-origin download behavior.
+    // -----------------------------------------------------
+    if (url.pathname === "/api/download-file") {
+      if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
 
-    // =====================================================
-    // INSTAGRAM PUBLIC PROFILE
-    // GET /api/profile?handle=username
-    // =====================================================
-    if (url.pathname === "/api/profile") {
-      return instagramAPI(
-        env,
-        "/profile",
-        url.searchParams
-      );
+      try {
+        const body = await request.json();
+        const instagramUrl = String(body.url || "").trim();
+        const mediaIndex = Math.max(0, Number(body.index || 0));
+
+        if (!isInstagramUrl(instagramUrl)) {
+          return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
+        }
+        if (!env.SOCLIP_API_KEY) {
+          return json({ success: false, error: "Downloader is not configured yet." }, 503);
+        }
+
+        const r = await fetch("https://api.soclip.dev/v1/media", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.SOCLIP_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ url: instagramUrl })
+        });
+        const data = await safeJson(r);
+        if (!r.ok) return json(data, r.status);
+
+        const medias = data?.data?.medias || data?.medias || [];
+        const media = medias[mediaIndex] || medias[0];
+        if (!media?.url) return json({ success: false, error: "No downloadable media was returned." }, 404);
+
+        const fileResponse = await fetch(media.url, {
+          headers: { "User-Agent": "Mozilla/5.0" }
+        });
+        if (!fileResponse.ok) {
+          return json({ success: false, error: "The media server could not provide the file." }, 502);
+        }
+
+        const headers = new Headers(fileResponse.headers);
+        headers.set("Content-Disposition", `attachment; filename="akhisave-${safeFilename(media.ext || "mp4")}"`);
+        headers.set("Cache-Control", "no-store");
+        headers.set("X-Content-Type-Options", "nosniff");
+        return new Response(fileResponse.body, { status: 200, headers });
+      } catch (e) {
+        return json({ success: false, error: "Download failed. Please try again." }, 500);
+      }
     }
 
+    // -----------------------------------------------------
+    // Instagram public API proxy
+    // -----------------------------------------------------
+    const apiRoutes = [
+      ["/api/profile", "/profile"],
+      ["/api/profile/about", "/profile/about"],
+      ["/api/profile/posts", "/profile/posts"],
+      ["/api/profile/reels", "/profile/reels"],
+      ["/api/profile/stories", "/profile/stories"],
+      ["/api/profile/highlights", "/profile/highlights"],
+      ["/api/profile/followers", "/profile/followers"],
+      ["/api/profile/following", "/profile/following"],
+      ["/api/post", "/post"],
+      ["/api/post/comments", "/post/comments"],
+      ["/api/post/likers", "/post/likers"],
+      ["/api/search/users", "/search/users"],
+      ["/api/search/hashtags", "/search/hashtags"],
+      ["/api/search/locations", "/search/locations"],
+      ["/api/hashtag/top", "/hashtag/top"],
+      ["/api/hashtag/recent", "/hashtag/recent"],
+      ["/api/location", "/location"],
+      ["/api/location/posts", "/location/posts"],
+      ["/api/credits", "/credits"]
+    ];
 
-    // =====================================================
-    // INSTAGRAM PROFILE POSTS
-    // GET /api/profile/posts?handle=username
-    // =====================================================
-    if (url.pathname === "/api/profile/posts") {
-      return instagramAPI(
-        env,
-        "/profile/posts",
-        url.searchParams
-      );
+    for (const [localPath, remotePath] of apiRoutes) {
+      if (url.pathname === localPath) {
+        return instagramAPI(env, remotePath, url.searchParams);
+      }
     }
 
+    // -----------------------------------------------------
+    // Proxy temporary Instagram media URLs for previews/downloads.
+    // Only known Instagram/Facebook CDN hosts are accepted.
+    // -----------------------------------------------------
+    if (url.pathname === "/api/proxy-media") {
+      const target = url.searchParams.get("url");
+      if (!target) return json({ success: false, error: "Media URL is required." }, 400);
 
-    // =====================================================
-    // INSTAGRAM PROFILE REELS
-    // GET /api/profile/reels?handle=username
-    // =====================================================
-    if (url.pathname === "/api/profile/reels") {
-      return instagramAPI(
-        env,
-        "/profile/reels",
-        url.searchParams
-      );
+      try {
+        const targetUrl = new URL(target);
+        if (!isAllowedMediaHost(targetUrl.hostname)) {
+          return json({ success: false, error: "Media host is not allowed." }, 400);
+        }
+
+        const r = await fetch(targetUrl.toString(), {
+          headers: { "User-Agent": "Mozilla/5.0" }
+        });
+        if (!r.ok) return json({ success: false, error: "Media could not be loaded." }, 502);
+
+        const headers = new Headers(r.headers);
+        headers.set("Cache-Control", "public, max-age=300");
+        headers.set("Access-Control-Allow-Origin", "*");
+        return new Response(r.body, { status: 200, headers });
+      } catch (e) {
+        return json({ success: false, error: "Invalid media URL." }, 400);
+      }
     }
 
-
-    // =====================================================
-    // INSTAGRAM PROFILE STORIES
-    // GET /api/profile/stories?handle=username
-    // =====================================================
-    if (url.pathname === "/api/profile/stories") {
-      return instagramAPI(
-        env,
-        "/profile/stories",
-        url.searchParams
-      );
-    }
-
-
-    // =====================================================
-    // INSTAGRAM PROFILE HIGHLIGHTS
-    // GET /api/profile/highlights?handle=username
-    // =====================================================
-    if (url.pathname === "/api/profile/highlights") {
-      return instagramAPI(
-        env,
-        "/profile/highlights",
-        url.searchParams
-      );
-    }
-
-
-    // =====================================================
-    // INSTAGRAM PROFILE ABOUT
-    // GET /api/profile/about?handle=username
-    // =====================================================
-    if (url.pathname === "/api/profile/about") {
-      return instagramAPI(
-        env,
-        "/profile/about",
-        url.searchParams
-      );
-    }
-
-
-    // =====================================================
-    // INSTAGRAM POST / REEL DETAILS
-    // GET /api/post?url=instagram-url
-    // =====================================================
-    if (url.pathname === "/api/post") {
-      return instagramAPI(
-        env,
-        "/post",
-        url.searchParams,
-        "url"
-      );
-    }
-
-
-    // =====================================================
-    // INSTAGRAM USER SEARCH
-    // GET /api/search/users?q=username
-    // =====================================================
-    if (url.pathname === "/api/search/users") {
-      return instagramAPI(
-        env,
-        "/search/users",
-        url.searchParams,
-        "q"
-      );
-    }
-
-
-    // =====================================================
-    // SERVE AKHISAVE WEBSITE
-    // =====================================================
     return env.ASSETS.fetch(request);
   }
 };
 
-
-// =========================================================
-// INSTAGRAM API HELPER
-// =========================================================
-async function instagramAPI(env, endpoint, params, requiredParam = "handle") {
-
+async function instagramAPI(env, endpoint, params) {
   if (!env.INSTAGRAM_API_KEY) {
-    return Response.json(
-      {
-        success: false,
-        error: "Instagram API is not configured yet."
-      },
-      { status: 503 }
-    );
+    return json({ success: false, error: "Instagram API is not configured yet." }, 503);
   }
 
-  const value = params.get(requiredParam);
-
-  if (!value) {
-    return Response.json(
-      {
-        success: false,
-        error: `${requiredParam} is required.`
-      },
-      { status: 400 }
-    );
-  }
+  const apiUrl = new URL(`https://api.instagramapi.dev/v1${endpoint}`);
+  for (const [key, value] of params.entries()) apiUrl.searchParams.set(key, value);
 
   try {
+    const r = await fetch(apiUrl.toString(), {
+      headers: {
+        Authorization: `Bearer ${env.INSTAGRAM_API_KEY}`,
+        Accept: "application/json"
+      }
+    });
+    const data = await safeJson(r);
+    return json(data, r.status);
+  } catch (e) {
+    return json({ success: false, error: "Instagram API request failed." }, 502);
+  }
+}
 
-    const apiUrl = new URL(
-      `https://api.instagramapi.dev/v1${endpoint}`
-    );
+function isInstagramUrl(value) {
+  try {
+    const u = new URL(value);
+    return /^https?:$/.test(u.protocol) && /(^|\.)instagram\.com$/i.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
 
-    // Copy allowed query parameters
-    for (const [key, val] of params.entries()) {
-      apiUrl.searchParams.set(key, val);
+function isAllowedMediaHost(hostname) {
+  const h = hostname.toLowerCase();
+  return (
+    h === "instagram.com" ||
+    h.endsWith(".instagram.com") ||
+    h.endsWith(".cdninstagram.com") ||
+    h === "cdninstagram.com" ||
+    h === "fbcdn.net" ||
+    h.endsWith(".fbcdn.net")
+  );
+}
+
+function safeFilename(ext) {
+  const clean = String(ext).replace(/[^a-z0-9]/gi, "").toLowerCase();
+  return clean ? `media.${clean}` : "media.mp4";
+}
+
+async function safeJson(response) {
+  const text = await response.text();
+  try { return JSON.parse(text); }
+  catch { return { success: false, error: text || "Upstream API returned an invalid response." }; }
+}
+
+function json(data, status = 200) {
+  return Response.json(data, {
+    status,
+    headers: {
+      "Cache-Control": "no-store"
     }
-
-    const response = await fetch(apiUrl.toString(), {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${env.INSTAGRAM_API_KEY}`,
-        "Accept": "application/json"
-      }
-    });
-
-    const data = await response.json();
-
-    return Response.json(data, {
-      status: response.status,
-      headers: {
-        "Cache-Control": "no-store"
-      }
-    });
-
-  } catch (error) {
-
-    return Response.json(
-      {
-        success: false,
-        error: "Instagram API request failed."
-      },
-      { status: 500 }
-    );
-  }
-  }
+  });
+}
