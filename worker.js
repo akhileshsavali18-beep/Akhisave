@@ -3,6 +3,46 @@ export default {
     const url = new URL(request.url);
 
     // -----------------------------------------------------
+    // Admin authentication
+    // -----------------------------------------------------
+    if (url.pathname === "/api/admin/login") {
+      if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
+      if (!env.ADMIN_PASSWORD) return json({ success: false, error: "Admin login is not configured yet." }, 503);
+
+      try {
+        const body = await request.json();
+        const password = String(body.password || "");
+        if (!password || password !== env.ADMIN_PASSWORD) {
+          return json({ success: false, error: "Incorrect password." }, 401);
+        }
+
+        const expires = Date.now() + 24 * 60 * 60 * 1000;
+        const token = await createAdminToken(String(expires), env.ADMIN_PASSWORD);
+        const headers = new Headers({ "Cache-Control": "no-store" });
+        headers.append("Set-Cookie", `akhisave_admin=${token}; Path=/; Max-Age=86400; HttpOnly; Secure; SameSite=Strict`);
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+      } catch {
+        return json({ success: false, error: "Invalid request." }, 400);
+      }
+    }
+
+    if (url.pathname === "/api/admin/status") {
+      if (!(await isAdmin(request, env))) return json({ success: false, error: "Unauthorized" }, 401);
+      return json({
+        success: true,
+        downloader: Boolean(env.SOCLIP_API_KEY),
+        instagram: Boolean(env.INSTAGRAM_API_KEY)
+      });
+    }
+
+    if (url.pathname === "/api/admin/logout") {
+      if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
+      const headers = new Headers({ "Cache-Control": "no-store" });
+      headers.append("Set-Cookie", "akhisave_admin=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict");
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+    }
+
+    // -----------------------------------------------------
     // SoClip media resolver
     // -----------------------------------------------------
     if (url.pathname === "/api/download") {
@@ -146,6 +186,39 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+
+async function isAdmin(request, env) {
+  if (!env.ADMIN_PASSWORD) return false;
+  const cookie = request.headers.get("Cookie") || "";
+  const match = cookie.match(/(?:^|;\s*)akhisave_admin=([^;]+)/);
+  if (!match) return false;
+
+  try {
+    const [expires, signature] = atob(match[1].replace(/-/g, "+").replace(/_/g, "/")).split(".");
+    if (!expires || !signature || Number(expires) < Date.now()) return false;
+    const expected = await signAdminToken(expires, env.ADMIN_PASSWORD);
+    return signature === expected;
+  } catch {
+    return false;
+  }
+}
+
+async function createAdminToken(expires, password) {
+  const signature = await signAdminToken(expires, password);
+  return btoa(`${expires}.${signature}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function signAdminToken(value, password) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 async function instagramAPI(env, endpoint, params) {
   if (!env.INSTAGRAM_API_KEY) {
