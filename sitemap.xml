@@ -1,21 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://akhisave.online/</loc>
-  </url>
-  <url>
-    <loc>https://akhisave.online/faq.html</loc>
-  </url>
-  <url>
-    <loc>https://akhisave.online/privacy.html</loc>
-  </url>
-  <url>
-    <loc>https://akhisave.online/terms.html</loc>
-  </url>
-  <url>
-    <loc>https://akhisave.online/dmca.html</loc>
-  </url>
-  <url>
-    <loc>https://akhisave.online/contact.html</loc>
-  </url>
+  <url><loc>https://akhisave.online/</loc></url>
+  <url><loc>https://akhisave.online/faq.html</loc></url>
+  <url><loc>https://akhisave.online/instagram-downloader.html</loc></url>
+  <url><loc>https://akhisave.online/privacy.html</loc></url>
+  <url><loc>https://akhisave.online/terms.html</loc></url>
+  <url><loc>https://akhisave.online/dmca.html</loc></url>
+  <url><loc>https://akhisave.online/contact.html</loc></url>
 </urlset>
