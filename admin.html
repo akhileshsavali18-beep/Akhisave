@@ -28,6 +28,11 @@ h1,h2,h3,b,strong{color:#f7f8fc!important}
 #loginView .brand:before{content:'A';display:inline-grid;place-items:center;width:34px;height:34px;margin-right:9px;border-radius:11px;background:linear-gradient(135deg,var(--p),var(--pk),var(--or));color:#fff;font-size:18px;vertical-align:middle;box-shadow:0 10px 30px #775cff33}
 @media(max-width:560px){.wrap{padding-left:12px;padding-right:12px}.card{border-radius:18px!important}.topbar{height:64px}.brand{font-size:20px}}
 
+
+/* AkhiSave official logo asset */
+.topbar .brand:before,.drawerbox .brand:before,#loginView .brand:before{content:'';display:inline-block;background:url('/akhisave-mark.svg') center/cover no-repeat;width:34px;height:34px;margin-right:9px;border-radius:11px;vertical-align:middle;box-shadow:0 10px 30px #775cff33}
+.drawerbox .brand:before{width:32px;height:32px;margin-right:8px;border-radius:10px}
+
 </style></head><body>
 <div id="loginView" class="wrap"><div class="card login"><a class="brand" href="/"><img src="/38364009-f822-430a-9f51-694b12b8d9ef.png" alt="AkhiSave"><span>AkhiSave</span></a><h1>Admin Panel</h1><p class="muted small">Private management area. Enter your admin password.</p><form id="loginForm"><input id="password" class="input" type="password" autocomplete="current-password" placeholder="Admin password" required><button class="btn" style="width:100%" type="submit">Login</button></form><div id="loginError" class="error loginmsg"></div></div></div>
 <div id="adminView" class="wrap hidden">
