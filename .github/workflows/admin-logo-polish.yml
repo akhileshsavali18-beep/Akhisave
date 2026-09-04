@@ -13,18 +13,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Add matching AkhiSave logo
+      - name: Add official AkhiSave logo
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('admin.html')
           s=p.read_text(encoding='utf-8')
           css=r'''
-          /* AkhiSave matching logo polish */
-          .topbar .brand:before{content:'A';display:inline-grid;place-items:center;width:34px;height:34px;margin-right:9px;border-radius:11px;background:linear-gradient(135deg,#775cff,#ff3f8f,#ff9d4d);color:#fff;font-size:17px;font-weight:950;box-shadow:0 10px 30px #775cff33;vertical-align:middle}
-          .drawerbox .brand:before{content:'A';display:inline-grid;place-items:center;width:32px;height:32px;margin-right:8px;border-radius:10px;background:linear-gradient(135deg,#775cff,#ff3f8f,#ff9d4d);color:#fff;font-size:16px;font-weight:950;vertical-align:middle}
+          /* AkhiSave official logo asset */
+          .topbar .brand:before,.drawerbox .brand:before,#loginView .brand:before{content:'';display:inline-block;background:url('/akhisave-mark.svg') center/cover no-repeat;width:34px;height:34px;margin-right:9px;border-radius:11px;vertical-align:middle;box-shadow:0 10px 30px #775cff33}
+          .drawerbox .brand:before{width:32px;height:32px;margin-right:8px;border-radius:10px}
           '''
-          marker='/* AkhiSave matching logo polish */'
+          marker='/* AkhiSave official logo asset */'
           if marker not in s:
               s=s.replace('</style>',css+'\n</style>',1)
           p.write_text(s,encoding='utf-8')
