@@ -2,65 +2,42 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // -----------------------------------------------------
-    // Admin authentication
-    // -----------------------------------------------------
     if (url.pathname === "/api/admin/login") {
       if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
       if (!env.ADMIN_PASSWORD) return json({ success: false, error: "Admin login is not configured yet." }, 503);
-
       try {
         const body = await request.json();
         const password = String(body.password || "");
-        if (!password || password !== env.ADMIN_PASSWORD) {
-          return json({ success: false, error: "Incorrect password." }, 401);
-        }
-
+        if (!password || password !== env.ADMIN_PASSWORD) return json({ success: false, error: "Incorrect password." }, 401);
         const expires = Date.now() + 24 * 60 * 60 * 1000;
         const token = await createAdminToken(String(expires), env.ADMIN_PASSWORD);
         const headers = new Headers({ "Cache-Control": "no-store" });
         headers.append("Set-Cookie", `akhisave_admin=${token}; Path=/; Max-Age=86400; HttpOnly; Secure; SameSite=Strict`);
         return new Response(JSON.stringify({ success: true }), { status: 200, headers });
-      } catch {
-        return json({ success: false, error: "Invalid request." }, 400);
-      }
+      } catch { return json({ success: false, error: "Invalid request." }, 400); }
     }
 
     if (url.pathname === "/api/admin/status") {
       if (!(await isAdmin(request, env))) return json({ success: false, error: "Unauthorized" }, 401);
-      return json({
-        success: true,
-        downloader: Boolean(env.SOCLIP_API_KEY),
-        instagram: Boolean(env.INSTAGRAM_API_KEY),
-        storage: Boolean(env.AKHISAVE_SETTINGS)
-      });
+      return json({ success: true, downloader: Boolean(env.SOCLIP_API_KEY), instagram: Boolean(env.INSTAGRAM_API_KEY), storage: Boolean(env.AKHISAVE_SETTINGS) });
     }
 
     if (url.pathname === "/api/admin/settings") {
       if (!(await isAdmin(request, env))) return json({ success: false, error: "Unauthorized" }, 401);
       if (!env.AKHISAVE_SETTINGS) return json({ success: false, error: "Settings storage is not connected yet." }, 503);
-
-      if (request.method === "GET") {
-        return json({ success: true, settings: await getSettings(env) });
-      }
-
+      if (request.method === "GET") return json({ success: true, settings: await getSettings(env) });
       if (request.method === "PUT") {
         try {
           const body = await request.json();
           const settings = sanitizeSettings(body);
           await env.AKHISAVE_SETTINGS.put("site_settings", JSON.stringify(settings));
           return json({ success: true, settings });
-        } catch {
-          return json({ success: false, error: "Could not save settings." }, 400);
-        }
+        } catch { return json({ success: false, error: "Could not save settings." }, 400); }
       }
-
       return json({ success: false, error: "Method not allowed" }, 405);
     }
 
-    if (url.pathname === "/api/site-config") {
-      return json({ success: true, settings: await getSettings(env) });
-    }
+    if (url.pathname === "/api/site-config") return json({ success: true, settings: await getSettings(env) });
 
     if (url.pathname === "/api/admin/logout") {
       if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
@@ -69,152 +46,67 @@ export default {
       return new Response(JSON.stringify({ success: true }), { status: 200, headers });
     }
 
-    // -----------------------------------------------------
-    // SoClip media resolver
-    // -----------------------------------------------------
     if (url.pathname === "/api/download") {
       if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
-
       try {
         const body = await request.json();
         const instagramUrl = String(body.url || "").trim();
-        if (!isInstagramUrl(instagramUrl)) {
-          return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
-        }
-        if (!env.SOCLIP_API_KEY) {
-          return json({ success: false, error: "Downloader is not configured yet." }, 503);
-        }
-
-        const r = await fetch("https://api.soclip.dev/v1/media", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.SOCLIP_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ url: instagramUrl })
-        });
-        const data = await safeJson(r);
-        return json(data, r.status);
-      } catch {
-        return json({ success: false, error: "Something went wrong. Please try again." }, 500);
-      }
+        if (!isInstagramUrl(instagramUrl)) return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
+        if (!env.SOCLIP_API_KEY) return json({ success: false, error: "Downloader is not configured yet." }, 503);
+        const r = await fetch("https://api.soclip.dev/v1/media", { method: "POST", headers: { Authorization: `Bearer ${env.SOCLIP_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ url: instagramUrl }) });
+        return json(await safeJson(r), r.status);
+      } catch { return json({ success: false, error: "Something went wrong. Please try again." }, 500); }
     }
 
-    // -----------------------------------------------------
-    // Download a resolved media file through AkhiSave.
-    // -----------------------------------------------------
     if (url.pathname === "/api/download-file") {
       if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
-
       try {
         const body = await request.json();
         const instagramUrl = String(body.url || "").trim();
         const mediaIndex = Math.max(0, Number(body.index || 0));
-
-        if (!isInstagramUrl(instagramUrl)) {
-          return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
-        }
-        if (!env.SOCLIP_API_KEY) {
-          return json({ success: false, error: "Downloader is not configured yet." }, 503);
-        }
-
-        const r = await fetch("https://api.soclip.dev/v1/media", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.SOCLIP_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ url: instagramUrl })
-        });
+        if (!isInstagramUrl(instagramUrl)) return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
+        if (!env.SOCLIP_API_KEY) return json({ success: false, error: "Downloader is not configured yet." }, 503);
+        const r = await fetch("https://api.soclip.dev/v1/media", { method: "POST", headers: { Authorization: `Bearer ${env.SOCLIP_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ url: instagramUrl }) });
         const data = await safeJson(r);
         if (!r.ok) return json(data, r.status);
-
         const medias = data?.data?.medias || data?.medias || [];
         const media = medias[mediaIndex] || medias[0];
         if (!media?.url) return json({ success: false, error: "No downloadable media was returned." }, 404);
-
         const fileResponse = await fetch(media.url, { headers: { "User-Agent": "Mozilla/5.0" } });
         if (!fileResponse.ok) return json({ success: false, error: "The media server could not provide the file." }, 502);
-
         const headers = new Headers(fileResponse.headers);
         headers.set("Content-Disposition", `attachment; filename="akhisave-${safeFilename(media.ext || "mp4")}"`);
         headers.set("Cache-Control", "no-store");
         headers.set("X-Content-Type-Options", "nosniff");
         return new Response(fileResponse.body, { status: 200, headers });
-      } catch {
-        return json({ success: false, error: "Download failed. Please try again." }, 500);
-      }
+      } catch { return json({ success: false, error: "Download failed. Please try again." }, 500); }
     }
 
-    // -----------------------------------------------------
-    // Instagram public API proxy
-    // -----------------------------------------------------
-    const apiRoutes = [
-      ["/api/profile", "/profile"],
-      ["/api/profile/about", "/profile/about"],
-      ["/api/profile/posts", "/profile/posts"],
-      ["/api/profile/reels", "/profile/reels"],
-      ["/api/profile/stories", "/profile/stories"],
-      ["/api/profile/highlights", "/profile/highlights"],
-      ["/api/profile/followers", "/profile/followers"],
-      ["/api/profile/following", "/profile/following"],
-      ["/api/post", "/post"],
-      ["/api/post/comments", "/post/comments"],
-      ["/api/post/likers", "/post/likers"],
-      ["/api/search/users", "/search/users"],
-      ["/api/search/hashtags", "/search/hashtags"],
-      ["/api/search/locations", "/search/locations"],
-      ["/api/hashtag/top", "/hashtag/top"],
-      ["/api/hashtag/recent", "/hashtag/recent"],
-      ["/api/location", "/location"],
-      ["/api/location/posts", "/location/posts"],
-      ["/api/credits", "/credits"]
-    ];
+    const apiRoutes = [["/api/profile", "/profile"],["/api/profile/about", "/profile/about"],["/api/profile/posts", "/profile/posts"],["/api/profile/reels", "/profile/reels"],["/api/profile/stories", "/profile/stories"],["/api/profile/highlights", "/profile/highlights"],["/api/profile/followers", "/profile/followers"],["/api/profile/following", "/profile/following"],["/api/post", "/post"],["/api/post/comments", "/post/comments"],["/api/post/likers", "/post/likers"],["/api/search/users", "/search/users"],["/api/search/hashtags", "/search/hashtags"],["/api/search/locations", "/search/locations"],["/api/hashtag/top", "/hashtag/top"],["/api/hashtag/recent", "/hashtag/recent"],["/api/location", "/location"],["/api/location/posts", "/location/posts"],["/api/credits", "/credits"]];
+    for (const [localPath, remotePath] of apiRoutes) if (url.pathname === localPath) return instagramAPI(env, remotePath, url.searchParams);
 
-    for (const [localPath, remotePath] of apiRoutes) {
-      if (url.pathname === localPath) return instagramAPI(env, remotePath, url.searchParams);
-    }
-
-    // -----------------------------------------------------
-    // Proxy temporary Instagram media URLs.
-    // -----------------------------------------------------
     if (url.pathname === "/api/proxy-media") {
       const target = url.searchParams.get("url");
       if (!target) return json({ success: false, error: "Media URL is required." }, 400);
-
       try {
         const targetUrl = new URL(target);
         if (!isAllowedMediaHost(targetUrl.hostname)) return json({ success: false, error: "Media host is not allowed." }, 400);
-
         const r = await fetch(targetUrl.toString(), { headers: { "User-Agent": "Mozilla/5.0" } });
         if (!r.ok) return json({ success: false, error: "Media could not be loaded." }, 502);
-
         const headers = new Headers(r.headers);
         headers.set("Cache-Control", "public, max-age=300");
         headers.set("Access-Control-Allow-Origin", "*");
         return new Response(r.body, { status: 200, headers });
-      } catch {
-        return json({ success: false, error: "Invalid media URL." }, 400);
-      }
+      } catch { return json({ success: false, error: "Invalid media URL." }, 400); }
     }
 
-    // -----------------------------------------------------
-    // Public website runtime controls from KV.
-    // -----------------------------------------------------
     if (request.method === "GET" && url.pathname === "/") {
       const settings = await getSettings(env);
-      if (settings.maintenance) {
-        return new Response(maintenancePage(settings), {
-          status: 503,
-          headers: { "Content-Type": "text/html; charset=UTF-8", "Cache-Control": "no-store", "Retry-After": "3600" }
-        });
-      }
-
+      if (settings.maintenance) return new Response(maintenancePage(settings), { status: 503, headers: { "Content-Type": "text/html; charset=UTF-8", "Cache-Control": "no-store", "Retry-After": "3600" } });
       const assetResponse = await env.ASSETS.fetch(request);
       if (!assetResponse.ok) return assetResponse;
       return applyRuntimeSettings(assetResponse, settings);
     }
-
     return env.ASSETS.fetch(request);
   }
 };
@@ -222,24 +114,9 @@ export default {
 const DEFAULT_SETTINGS = {
   maintenance: false,
   announcement: "",
-  tools: {
-    photo: true,
-    reels: true,
-    video: true,
-    story: true,
-    profile: true,
-    youtube: false,
-    facebook: false,
-    tiktok: false
-  },
-  ads: {
-    monetag: true,
-    zone: "11717101"
-  },
-  seo: {
-    title: "Instagram Downloader - Photos, Reels, Videos & Stories | AkhiSave",
-    description: "AkhiSave is a fast Instagram downloader to download public Instagram photos, reels, videos and stories by URL or username. No password required."
-  }
+  tools: { photo: true, reels: true, video: true, story: true, profile: true, youtube: false, facebook: false, tiktok: false },
+  ads: { monetag: true, zone: "11717101" },
+  seo: { title: "Instagram Downloader - Photos, Reels, Videos & Stories | AkhiSave", description: "AkhiSave is a fast Instagram downloader to download public Instagram photos, reels, videos and stories by URL or username. No password required." }
 };
 
 async function getSettings(env) {
@@ -248,9 +125,7 @@ async function getSettings(env) {
     const raw = await env.AKHISAVE_SETTINGS.get("site_settings");
     if (!raw) return structuredClone(DEFAULT_SETTINGS);
     return sanitizeSettings(JSON.parse(raw));
-  } catch {
-    return structuredClone(DEFAULT_SETTINGS);
-  }
+  } catch { return structuredClone(DEFAULT_SETTINGS); }
 }
 
 function sanitizeSettings(input) {
@@ -261,53 +136,36 @@ function sanitizeSettings(input) {
   return {
     maintenance: Boolean(s.maintenance),
     announcement: cleanText(s.announcement, 180),
-    tools: {
-      photo: tools.photo !== false,
-      reels: tools.reels !== false,
-      video: tools.video !== false,
-      story: tools.story !== false,
-      profile: tools.profile !== false,
-      youtube: Boolean(tools.youtube),
-      facebook: Boolean(tools.facebook),
-      tiktok: Boolean(tools.tiktok)
-    },
-    ads: {
-      monetag: ads.monetag !== false,
-      zone: cleanText(ads.zone || DEFAULT_SETTINGS.ads.zone, 30).replace(/[^0-9]/g, "").slice(0, 20) || DEFAULT_SETTINGS.ads.zone
-    },
-    seo: {
-      title: cleanText(seo.title || DEFAULT_SETTINGS.seo.title, 140),
-      description: cleanText(seo.description || DEFAULT_SETTINGS.seo.description, 220)
-    }
+    tools: { photo: tools.photo !== false, reels: tools.reels !== false, video: tools.video !== false, story: tools.story !== false, profile: tools.profile !== false, youtube: Boolean(tools.youtube), facebook: Boolean(tools.facebook), tiktok: Boolean(tools.tiktok) },
+    ads: { monetag: ads.monetag !== false, zone: cleanText(ads.zone || DEFAULT_SETTINGS.ads.zone, 30).replace(/[^0-9]/g, "").slice(0, 20) || DEFAULT_SETTINGS.ads.zone },
+    seo: { title: cleanText(seo.title || DEFAULT_SETTINGS.seo.title, 140), description: cleanText(seo.description || DEFAULT_SETTINGS.seo.description, 220) }
   };
 }
 
-function cleanText(value, max) {
-  return String(value ?? "").replace(/[<>]/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max);
-}
+function cleanText(value, max) { return String(value ?? "").replace(/[<>]/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max); }
 
 async function applyRuntimeSettings(response, settings) {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("text/html")) return response;
-
   let html = await response.text();
   const title = escapeHtml(settings.seo.title);
   const description = escapeHtml(settings.seo.description);
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
   html = html.replace(/<meta\s+name=["']description["'][^>]*>/i, `<meta name="description" content="${escapeAttr(description)}">`);
 
-  const configScript = `<script>window.AKHISAVE_CONFIG=${JSON.stringify(settings)};</script>`;
-  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.announcement){const a=document.createElement('div');a.textContent=c.announcement;a.style.cssText='position:sticky;top:0;z-index:9999;padding:10px 14px;text-align:center;background:#172033;color:#fff;font:600 14px system-ui';document.body.prepend(a)}}if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
-  html = html.replace(/<\/head>/i, `${configScript}${controlScript}</head>`);
-
-  if (settings.ads.monetag === false) {
-    html = html.replace(/<script>\(function\(s\)\{s\.dataset\.zone='11717101',s\.src='https:\/\/nap5k\.com\/tag\.min\.js'\}\)\([^<]*?<\/script>/gi, "");
+  if (settings.announcement) {
+    const banner = `<div id="akhisave-announcement" style="position:relative;z-index:9999;width:100%;box-sizing:border-box;padding:10px 14px;text-align:center;background:#172033;color:#fff;font:600 14px system-ui,sans-serif;line-height:1.4">${escapeHtml(settings.announcement)}</div>`;
+    html = html.replace(/<body([^>]*)>/i, `<body$1>${banner}`);
   }
 
-  return new Response(html, {
-    status: response.status,
-    headers: new Headers(response.headers)
-  });
+  const configScript = `<script>window.AKHISAVE_CONFIG=${JSON.stringify(settings)};</script>`;
+  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
+  html = html.replace(/<\/head>/i, `${configScript}${controlScript}</head>`);
+  if (settings.ads.monetag === false) html = html.replace(/<script>\(function\(s\)\{s\.dataset\.zone='11717101',s\.src='https:\/\/nap5k\.com\/tag\.min\.js'\}\)\([^<]*?<\/script>/gi, "");
+
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "no-store");
+  return new Response(html, { status: response.status, headers });
 }
 
 function maintenancePage(settings) {
@@ -315,9 +173,7 @@ function maintenancePage(settings) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maintenance | AkhiSave</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f7fb;color:#172033;font-family:system-ui;text-align:center;padding:20px}.box{max-width:520px;background:#fff;border:1px solid #e6eaf0;border-radius:18px;padding:32px;box-shadow:0 10px 35px rgba(20,30,50,.08)}h1{margin-top:0}</style></head><body><div class="box"><h1>AkhiSave</h1><p>${escapeHtml(message)}</p><p>Please check back shortly.</p></div></body></html>`;
 }
 
-function escapeHtml(value) {
-  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function escapeHtml(value) { return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 function escapeAttr(value) { return escapeHtml(value); }
 
 async function isAdmin(request, env) {
@@ -334,51 +190,19 @@ async function isAdmin(request, env) {
   } catch { return false; }
 }
 
-async function createAdminToken(expires, password) {
-  const signature = await signAdminToken(expires, password);
-  return btoa(`${expires}.${signature}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function signAdminToken(value, password) {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
-  return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
-}
+async function createAdminToken(expires, password) { const signature = await signAdminToken(expires, password); return btoa(`${expires}.${signature}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+async function signAdminToken(value, password) { const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]); const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)); return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join(""); }
 
 async function instagramAPI(env, endpoint, params) {
   if (!env.INSTAGRAM_API_KEY) return json({ success: false, error: "Instagram API is not configured yet." }, 503);
   const apiUrl = new URL(`https://api.instagramapi.dev/v1${endpoint}`);
   for (const [key, value] of params.entries()) apiUrl.searchParams.set(key, value);
-  try {
-    const r = await fetch(apiUrl.toString(), { headers: { Authorization: `Bearer ${env.INSTAGRAM_API_KEY}`, Accept: "application/json" } });
-    const data = await safeJson(r);
-    return json(data, r.status);
-  } catch { return json({ success: false, error: "Instagram API request failed." }, 502); }
+  try { const r = await fetch(apiUrl.toString(), { headers: { Authorization: `Bearer ${env.INSTAGRAM_API_KEY}`, Accept: "application/json" } }); return json(await safeJson(r), r.status); }
+  catch { return json({ success: false, error: "Instagram API request failed." }, 502); }
 }
 
-function isInstagramUrl(value) {
-  try {
-    const u = new URL(value);
-    return /^https?:$/.test(u.protocol) && /(^|\.)instagram\.com$/i.test(u.hostname);
-  } catch { return false; }
-}
-
-function isAllowedMediaHost(hostname) {
-  const h = hostname.toLowerCase();
-  return h === "instagram.com" || h.endsWith(".instagram.com") || h.endsWith(".cdninstagram.com") || h === "cdninstagram.com" || h === "fbcdn.net" || h.endsWith(".fbcdn.net");
-}
-
-function safeFilename(ext) {
-  const clean = String(ext).replace(/[^a-z0-9]/gi, "").toLowerCase();
-  return clean ? `media.${clean}` : "media.mp4";
-}
-
-async function safeJson(response) {
-  const text = await response.text();
-  try { return JSON.parse(text); }
-  catch { return { success: false, error: text || "Upstream API returned an invalid response." }; }
-}
-
-function json(data, status = 200) {
-  return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
-}
+function isInstagramUrl(value) { try { const u = new URL(value); return /^https?:$/.test(u.protocol) && /(^|\.)instagram\.com$/i.test(u.hostname); } catch { return false; } }
+function isAllowedMediaHost(hostname) { const h = hostname.toLowerCase(); return h === "instagram.com" || h.endsWith(".instagram.com") || h.endsWith(".cdninstagram.com") || h === "cdninstagram.com" || h === "fbcdn.net" || h.endsWith(".fbcdn.net"); }
+function safeFilename(ext) { const clean = String(ext).replace(/[^a-z0-9]/gi, "").toLowerCase(); return clean ? `media.${clean}` : "media.mp4"; }
+async function safeJson(response) { const text = await response.text(); try { return JSON.parse(text); } catch { return { success: false, error: text || "Upstream API returned an invalid response." }; } }
+function json(data, status = 200) { return Response.json(data, { status, headers: { "Cache-Control": "no-store" } }); }
