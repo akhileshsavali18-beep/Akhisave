@@ -1,0 +1,35 @@
+name: Restore detailed admin UI
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-old-admin-ui.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore light detailed styling
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('admin.html')
+          s=p.read_text()
+          marker='/* AkhiSave Premium Admin Theme */'
+          if marker in s:
+              a=s.index(marker)
+              b=s.index('</style>',a)
+              s=s[:a]+s[b:]
+          old='<button id="save" class="btn save">Save Changes</button><button id="reset" class="btn secondary">Reset Defaults</button>'
+          if old not in s:
+              s=s.replace('<button id="save" class="btn save">Save Changes</button></div><div id="saveMessage"',old+'</div><div id="saveMessage"')
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html .github/workflows/restore-old-admin-ui.yml
+          git commit -m 'Restore detailed structured admin interface'
+          git rm .github/workflows/restore-old-admin-ui.yml
+          git commit -m 'Remove temporary admin UI workflow'
+          git push
