@@ -1,0 +1,36 @@
+name: Polish Admin Branding
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: ${{ !startsWith(github.event.head_commit.message, 'Polish admin branding') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add matching AkhiSave logo
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('admin.html')
+          s=p.read_text(encoding='utf-8')
+          css=r'''
+          /* AkhiSave matching logo polish */
+          .topbar .brand:before{content:'A';display:inline-grid;place-items:center;width:34px;height:34px;margin-right:9px;border-radius:11px;background:linear-gradient(135deg,#775cff,#ff3f8f,#ff9d4d);color:#fff;font-size:17px;font-weight:950;box-shadow:0 10px 30px #775cff33;vertical-align:middle}
+          .drawerbox .brand:before{content:'A';display:inline-grid;place-items:center;width:32px;height:32px;margin-right:8px;border-radius:10px;background:linear-gradient(135deg,#775cff,#ff3f8f,#ff9d4d);color:#fff;font-size:16px;font-weight:950;vertical-align:middle}
+          '''
+          marker='/* AkhiSave matching logo polish */'
+          if marker not in s:
+              s=s.replace('</style>',css+'\n</style>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git diff --cached --quiet || git commit -m 'Polish admin branding'
+          git push
