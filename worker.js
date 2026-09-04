@@ -154,12 +154,15 @@ async function applyRuntimeSettings(response, settings) {
   html = html.replace(/<meta\s+name=["']description["'][^>]*>/i, `<meta name="description" content="${escapeAttr(description)}">`);
 
   if (settings.announcement) {
-    const banner = `<div id="akhisave-announcement" style="position:relative;z-index:9999;width:100%;box-sizing:border-box;padding:10px 14px;text-align:center;background:#172033;color:#fff;font:600 14px system-ui,sans-serif;line-height:1.4">${escapeHtml(settings.announcement)}</div>`;
+    const announcement = escapeHtml(settings.announcement);
+    const banner = `<div id="akhisave-announcement" style="position:fixed;top:0;left:0;right:0;z-index:99999;width:100%;box-sizing:border-box;background:#172033;color:#fff;font:600 14px system-ui,sans-serif;line-height:1.4;overflow:hidden"><div id="akhisave-marquee" style="width:100%;overflow:hidden;white-space:nowrap;padding:10px 0;box-sizing:border-box"><div style="display:inline-flex;width:max-content;min-width:100%;animation:akhisave-marquee 14s linear infinite;will-change:transform"><span style="display:inline-block;padding-left:100vw;padding-right:80px">${announcement}</span><span aria-hidden="true" style="display:inline-block;padding-right:80px">${announcement}</span></div></div></div>`;
+    const style = `<style>@keyframes akhisave-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}@media (prefers-reduced-motion:reduce){#akhisave-marquee>div{animation:none!important;transform:none!important;display:block;text-align:center;white-space:normal;padding:10px 14px;box-sizing:border-box}}</style>`;
     html = html.replace(/<body([^>]*)>/i, `<body$1>${banner}`);
+    html = html.replace(/<\/head>/i, `${style}</head>`);
   }
 
   const configScript = `<script>window.AKHISAVE_CONFIG=${JSON.stringify(settings)};</script>`;
-  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
+  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.announcement){const b=document.getElementById('akhisave-announcement');if(b){const h=b.offsetHeight;document.body.style.paddingTop=h+'px';window.addEventListener('resize',()=>{document.body.style.paddingTop=b.offsetHeight+'px'})}}if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
   html = html.replace(/<\/head>/i, `${configScript}${controlScript}</head>`);
   if (settings.ads.monetag === false) html = html.replace(/<script>\(function\(s\)\{s\.dataset\.zone='11717101',s\.src='https:\/\/nap5k\.com\/tag\.min\.js'\}\)\([^<]*?<\/script>/gi, "");
 
@@ -173,7 +176,7 @@ function maintenancePage(settings) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maintenance | AkhiSave</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f7fb;color:#172033;font-family:system-ui;text-align:center;padding:20px}.box{max-width:520px;background:#fff;border:1px solid #e6eaf0;border-radius:18px;padding:32px;box-shadow:0 10px 35px rgba(20,30,50,.08)}h1{margin-top:0}</style></head><body><div class="box"><h1>AkhiSave</h1><p>${escapeHtml(message)}</p><p>Please check back shortly.</p></div></body></html>`;
 }
 
-function escapeHtml(value) { return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+function escapeHtml(value) { return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;"); }
 function escapeAttr(value) { return escapeHtml(value); }
 
 async function isAdmin(request, env) {
