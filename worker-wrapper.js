@@ -1,150 +1,56 @@
 import app from "./worker.js";
 
-const SOCLIP_URL = "https://api.soclip.dev/v1/media";
-const TEST_URL = "https://www.instagram.com/reel/Cx8pLh9sD4A/";
+const SK = "https://api.socialkit.dev";
 
 export default {
   async fetch(request, env, ctx) {
-    const url = new URL(request.url);
+    const u = new URL(request.url);
 
-    if (url.pathname === "/api/admin/soclip-check") {
-      if (request.method !== "GET" && request.method !== "POST") {
-        return json({ success: false, error: "Method not allowed" }, 405);
-      }
+    if (u.pathname === "/api/admin/socialkit-check") return adminCheck(request, env, ctx);
+    if (u.pathname === "/api/instagram/profile" && request.method === "POST") return profileProxy(request, env);
+    if (u.pathname === "/api/instagram/posts" && request.method === "POST") return feedProxy(request, env, "/instagram/channel-posts");
+    if (u.pathname === "/api/instagram/reels" && request.method === "POST") return feedProxy(request, env, "/instagram/channel-reels");
+    if (u.pathname === "/api/download" && request.method === "POST") return download(request, env);
+    if (u.pathname === "/api/download-file" && request.method === "POST") return downloadFile(request, env);
 
-      const authCheck = await app.fetch(new Request(new URL("/api/admin/status", request.url), {
-        method: "GET",
-        headers: request.headers
-      }), env, ctx);
-      if (!authCheck.ok) return json({ success: false, error: "Unauthorized" }, 401);
-
-      const checkedAt = new Date().toISOString();
-      const configured = Boolean(env.SOCLIP_API_KEY);
-      let result = {
-        success: true,
-        configured,
-        httpStatus: null,
-        upstreamMessage: "",
-        checkedAt,
-        status: configured ? "Checking..." : "API Key Not Configured"
-      };
-
-      if (configured) {
-        try {
-          const r = await fetch(SOCLIP_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${normalizeApiKey(env.SOCLIP_API_KEY)}`,
-              "Content-Type": "application/json",
-              Accept: "application/json"
-            },
-            body: JSON.stringify({ url: TEST_URL })
-          });
-          const data = await safeJson(r);
-          const message = extractMessage(data, r.statusText);
-          result.httpStatus = r.status;
-          result.upstreamMessage = message;
-          result.status = r.ok
-            ? "SoClip Access OK"
-            : (r.status === 401 || r.status === 403)
-              ? "Subscription Access Error"
-              : "SoClip API Error";
-        } catch (e) {
-          result.httpStatus = 0;
-          result.upstreamMessage = e instanceof Error ? e.message : "Network request failed.";
-          result.status = "SoClip Connection Error";
-        }
-      }
-
-      if (env.AKHISAVE_SETTINGS) {
-        try { await env.AKHISAVE_SETTINGS.put("soclip_last_check", JSON.stringify(result)); } catch {}
-      }
-      return json(result, 200, { "Cache-Control": "no-store" });
+    if (request.method === "GET" && (u.pathname === "/admin" || u.pathname === "/admin.html")) {
+      const r = await app.fetch(request, env, ctx);
+      if (!r.ok || !(r.headers.get("content-type") || "").includes("text/html")) return r;
+      const h = new Headers(r.headers); h.set("Cache-Control", "no-store");
+      return new Response(injectDiagnostic(await r.text()), { status:r.status, headers:h });
     }
-
-    if ((url.pathname === "/api/download" || url.pathname === "/api/download-file") && request.method === "POST") {
-      const response = await app.fetch(request, env, ctx);
-      if (response.status === 401 || response.status === 403) {
-        let message = "SoClip API access is not active for this account.";
-        try {
-          const body = await response.clone().json();
-          const raw = String(body?.message || body?.error || "");
-          if (/not subscribed|subscription|subscribe/i.test(raw)) {
-            message = "Downloader is temporarily unavailable because the SoClip API subscription/access is not active. Please try again after SoClip access is restored.";
-          }
-        } catch {}
-        return json({ success: false, error: message, code: "SOCLIP_SUBSCRIPTION_ACCESS" }, 503, { "Cache-Control": "no-store" });
-      }
-      return response;
-    }
-
-    if (request.method === "GET" && (url.pathname === "/admin" || url.pathname === "/admin.html")) {
-      const response = await app.fetch(request, env, ctx);
-      if (!response.ok) return response;
-      const type = response.headers.get("content-type") || "";
-      if (!type.includes("text/html")) return response;
-      const html = await response.text();
-      const injected = injectDiagnostic(html);
-      const headers = new Headers(response.headers);
-      headers.set("Cache-Control", "no-store");
-      return new Response(injected, { status: response.status, headers });
-    }
-
     return app.fetch(request, env, ctx);
   }
 };
 
-function normalizeApiKey(value) {
-  return String(value || "").trim().replace(/^Bearer\s+/i, "").replace(/^['\"]|['\"]$/g, "").trim();
+const key = env => String(env.SOCIALKIT_API_KEY || "").trim().replace(/^Bearer\s+/i, "").replace(/^["']|["']$/g, "");
+const isIG = s => { try { const u=new URL(s); return /^https?:$/i.test(u.protocol) && /(^|\.)instagram\.com$/i.test(u.hostname); } catch { return false; } };
+const json = (d,s=200) => new Response(JSON.stringify(d),{status:s,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
+async function read(r){const t=await r.text();try{return JSON.parse(t)}catch{return{message:t.slice(0,500)}}}
+function msg(d,f="SocialKit could not process this request."){return String(d?.message??d?.error??d?.detail??f).slice(0,1000)}
+async function sk(endpoint, sourceUrl, env, extra={}){try{const r=await fetch(SK+endpoint,{method:"POST",headers:{"Content-Type":"application/json","x-access-key":key(env),Accept:"application/json"},body:JSON.stringify({access_key:key(env),url:sourceUrl,...extra})});return{ok:r.ok,status:r.status,data:await read(r)}}catch(e){return{ok:false,status:0,data:{message:e instanceof Error?e.message:"Upstream request failed."}}}}
+function fail(r){return json({success:false,error:msg(r.data),code:"SOCIALKIT_UPSTREAM_ERROR"},r.status===401||r.status===403?503:(r.status||502))}
+
+async function adminCheck(request,env,ctx){
+  if(request.method!=="GET"&&request.method!=="POST")return json({success:false,error:"Method not allowed"},405);
+  const auth=await app.fetch(new Request(new URL("/api/admin/status",request.url),{headers:request.headers}),env,ctx);if(!auth.ok)return json({success:false,error:"Unauthorized"},401);
+  const out={success:true,configured:!!key(env),httpStatus:null,upstreamMessage:"",credits:null,checkedAt:new Date().toISOString(),status:key(env)?"Checking...":"API Key Not Configured"};
+  if(key(env))try{const r=await fetch(SK+"/test",{headers:{"x-access-key":key(env),Accept:"application/json"}});const d=await read(r);out.httpStatus=r.status;out.upstreamMessage=msg(d,r.statusText);out.status=r.ok&&d?.success!==false?"SocialKit Access OK":"SocialKit API Error";try{const c=await fetch(SK+"/credits",{headers:{"x-access-key":key(env),Accept:"application/json"}});const cd=await read(c);if(c.ok&&cd?.success!==false)out.credits=cd.data||null}catch{}}catch(e){out.httpStatus=0;out.upstreamMessage=e instanceof Error?e.message:"Connection failed.";out.status="SocialKit Connection Error"}
+  if(env.AKHISAVE_SETTINGS)try{await env.AKHISAVE_SETTINGS.put("socialkit_last_check",JSON.stringify(out))}catch{}
+  return json(out);
 }
 
-async function safeJson(response) {
-  const text = await response.text();
-  try { return JSON.parse(text); } catch { return { raw: text.slice(0, 1000) }; }
-}
+async function profileProxy(request,env){let b;try{b=await request.json()}catch{return json({success:false,error:"Invalid request body."},400)}const url=String(b?.url||"").trim();if(!isIG(url))return json({success:false,error:"Please enter a valid public Instagram profile URL."},400);if(!key(env))return json({success:false,error:"Instagram tools are temporarily unavailable."},503);const r=await sk("/instagram/channel-stats",url,env);if(!r.ok||r.data?.success===false)return fail(r);const p=r.data?.data||r.data;return json({success:true,data:{...p,username:p.username||p.userName||p.handle||"",displayName:p.displayName||p.fullName||p.name||p.nickname||"",bio:p.bio||p.description||"",followers:p.followers??p.followerCount??p.followersCount,following:p.following??p.followingCount,posts:p.posts??p.postCount??p.postsCount,verified:p.verified??p.isVerified??false,avatar:p.avatar||p.profilePicture||p.profilePic||p.profilePhoto||p.profile_picture||p.avatarUrl||p.image||"",profileUrl:p.profileUrl||p.url||""}})}
+async function feedProxy(request,env,endpoint){let b;try{b=await request.json()}catch{return json({success:false,error:"Invalid request body."},400)}const url=String(b?.url||"").trim();if(!isIG(url))return json({success:false,error:"Please enter a valid public Instagram profile URL."},400);if(!key(env))return json({success:false,error:"Instagram tools are temporarily unavailable."},503);const r=await sk(endpoint,url,env);if(!r.ok||r.data?.success===false)return fail(r);const d=r.data?.data||r.data;let items=[];for(const k of ["items","posts","reels","results"])if(Array.isArray(d?.[k])){items=d[k];break}if(!items.length&&Array.isArray(d))items=d;return json({success:true,data:{items,raw:d}})}
 
-function extractMessage(data, fallback) {
-  const value = data?.message ?? data?.error ?? data?.detail ?? data?.raw ?? fallback ?? "";
-  return String(value).slice(0, 1000);
-}
-
-function json(data, status = 200, extra = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json; charset=UTF-8", ...extra }
-  });
-}
-
-function injectDiagnostic(html) {
-  const panel = `<section id="akhisave-soclip-diagnostic" style="margin:16px 0;padding:16px;border:1px solid #d9dee8;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.06)">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-    <div><strong style="font-size:18px">SoClip API Diagnostic</strong><div style="font-size:13px;opacity:.7;margin-top:3px">Admin-only access check. API key is never shown.</div></div>
-    <button id="akhisave-soclip-test" type="button" style="border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer">Test SoClip API</button>
-  </div>
-  <div id="akhisave-soclip-result" style="margin-top:14px;display:grid;gap:8px;font-size:14px">Press “Test SoClip API” to check access.</div>
-</section>
-<script>
-(function(){
-  const btn=document.getElementById('akhisave-soclip-test');
-  const out=document.getElementById('akhisave-soclip-result');
-  if(!btn||!out)return;
-  function esc(v){return String(v??'').replace(/[&<>\"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]})}
-  async function check(){
-    btn.disabled=true; btn.textContent='Checking...'; out.textContent='Checking SoClip API...';
-    try{
-      const r=await fetch('/api/admin/soclip-check',{cache:'no-store'});
-      const d=await r.json();
-      if(!r.ok) throw new Error(d.error||'Diagnostic request failed.');
-      out.innerHTML='<div><b>Status:</b> '+esc(d.status)+'</div>'+
-        '<div><b>API key configured:</b> '+(d.configured?'Yes':'No')+'</div>'+
-        '<div><b>SoClip HTTP status:</b> '+esc(d.httpStatus??'Not checked')+'</div>'+
-        '<div><b>Exact upstream message:</b> '+esc(d.upstreamMessage||'—')+'</div>'+
-        '<div><b>Last check:</b> '+esc(d.checkedAt||'—')+'</div>';
-    }catch(e){out.innerHTML='<div><b>Status:</b> Diagnostic Error</div><div>'+esc(e.message)+'</div>';}
-    finally{btn.disabled=false;btn.textContent='Test SoClip API';}
+async function download(request,env){let b;try{b=await request.json()}catch{return json({success:false,error:"Invalid request body."},400)}const url=String(b?.url||"").trim();if(!isIG(url))return json({success:false,error:"Please enter a valid public Instagram URL."},400);if(!key(env))return json({success:false,error:"Instagram downloader is temporarily unavailable."},503);let first="";try{first=new URL(url).pathname.split("/").filter(Boolean)[0]?.toLowerCase()||""}catch{}if(first==="stories")return json({success:false,error:"Story Downloader is not enabled yet. It will be added when a reliable supported endpoint is available."},501);
+  if(String(b?.tool||"")==="photo"||first==="p"){
+    const r=await sk("/instagram/stats",url,env);if(!r.ok||r.data?.success===false)return fail(r);return json({success:true,data:stats(r.data?.data||r.data)});
   }
-  btn.addEventListener('click',check);
-})();
-</script>`;
-  return html.replace(/<\/body>/i, panel + "</body>");
+  const r=await sk("/instagram/download",url,env,{format:b?.format||"mp4",quality:b?.quality||"720p"});if(!r.ok||r.data?.success===false)return fail(r);const d=r.data?.data||r.data;return json({success:true,data:{...d,medias:[{url:d.downloadUrl||d.videoUrl||"",thumbnail:d.thumbnail||"",ext:d.format||"mp4",label:d.quality||d.format||"Download"}]}});
 }
+function stats(d){const medias=[];const add=(v,type="image",thumb=d?.thumbnail||"")=>{if(typeof v==="string"&&/^https?:\/\//i.test(v)&&!medias.some(x=>x.url===v))medias.push({url:v,type,thumbnail:thumb})};add(d?.videoUrl,"video");add(d?.video_url,"video");add(d?.mediaUrl,d?.isVideo?"video":"image");add(d?.imageUrl);add(d?.image_url);for(const k of ["images","videos","media","medias"])if(Array.isArray(d?.[k]))for(const x of d[k])typeof x==="string"?add(x,k==="videos"?"video":"image"):x&&add(x.url||x.mediaUrl||x.imageUrl||x.videoUrl||x.src,x.type|| (k==="videos"?"video":"image"),x.thumbnail||d?.thumbnail||"");return{...d,medias}}
+
+async function downloadFile(request,env){let b;try{b=await request.json()}catch{return json({success:false,error:"Invalid request body."},400)}const url=String(b?.url||"").trim();if(!isIG(url))return json({success:false,error:"Please enter a valid public Instagram URL."},400);let d;if(String(b?.tool||"")==="photo"||url.includes("/p/")){const r=await sk("/instagram/stats",url,env);if(!r.ok||r.data?.success===false)return fail(r);d=stats(r.data?.data||r.data)}else{const r=await sk("/instagram/download",url,env,{format:"mp4",quality:"720p"});if(!r.ok||r.data?.success===false)return fail(r);d={medias:[{url:(r.data?.data||r.data)?.downloadUrl||""}]}}const media=d.medias?.[Number(b?.index||0)]?.url||d.medias?.[0]?.url;if(!media)return json({success:false,error:"No downloadable media URL was returned."},404);try{const r=await fetch(media);if(!r.ok)return json({success:false,error:"The temporary media link expired. Please try again."},502);const h=new Headers(r.headers);h.set("Content-Disposition",'attachment; filename="akhisave-media"');h.set("Cache-Control","no-store");return new Response(r.body,{status:200,headers:h})}catch{return json({success:false,error:"Media download failed."},502)}}
+
+function injectDiagnostic(html){const panel=`<section style="margin:16px 0;padding:16px;border:1px solid #d9dee8;border-radius:16px;background:#fff"><b style="font-size:18px">SocialKit API Diagnostic</b><div style="font-size:13px;opacity:.7;margin:4px 0 12px">Admin-only. API key is never shown.</div><button id="ak-sk-test" style="border:0;border-radius:9px;padding:10px 14px;font-weight:700">Test SocialKit API</button><div id="ak-sk-out" style="margin-top:12px;font-size:14px">Press the button to check access.</div></section><script>(function(){const b=document.getElementById('ak-sk-test'),o=document.getElementById('ak-sk-out');if(!b||!o)return;b.onclick=async()=>{b.disabled=true;b.textContent='Checking...';try{const r=await fetch('/api/admin/socialkit-check',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Diagnostic failed');o.innerHTML='<b>Status:</b> '+d.status+'<br><b>Key configured:</b> '+(d.configured?'Yes':'No')+'<br><b>HTTP:</b> '+(d.httpStatus??'—')+'<br><b>Credits:</b> '+(d.credits?.totalRemaining??'—')+'<br><b>Message:</b> '+(d.upstreamMessage||'—')}catch(e){o.textContent=e.message}finally{b.disabled=false;b.textContent='Test SocialKit API'}}})()</script>`;return html.replace(/<\/body>/i,panel+"</body>")}
