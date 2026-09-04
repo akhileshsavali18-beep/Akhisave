@@ -20,26 +20,25 @@ async function download(request,env){let b;try{b=await request.json()}catch{retu
 async function downloadFile(request,env){let b;try{b=await request.json()}catch{return json({success:false,error:"Invalid request body."},400)}const temp=new Request(new URL(request.url).toString(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});const r=await download(temp,env),d=await read(r);if(!r.ok||d.success===false)return json(d,r.status);const m=d?.data?.medias?.[Number(b?.index||0)]||d?.data?.medias?.[0];if(!m?.url)return json({success:false,error:"No downloadable media URL was returned."},404);try{const f=await fetch(m.url,{headers:{"User-Agent":"Mozilla/5.0"}});if(!f.ok)return json({success:false,error:"The temporary media link expired. Please try again."},502);const h=new Headers(f.headers);h.set("Content-Disposition",'attachment; filename="akhisave-media"');h.set("Cache-Control","no-store");return new Response(f.body,{status:200,headers:h})}catch{return json({success:false,error:"Media download failed."},502)}}
 async function adminCheck(request,env,ctx){if(!(await app.fetch(new Request(new URL("/api/admin/status",request.url),{headers:request.headers}),env,ctx)).ok)return json({success:false,error:"Unauthorized"},401);const out={success:true,configured:!!key(env),httpStatus:null,upstreamMessage:"",credits:null,checkedAt:new Date().toISOString(),status:key(env)?"Checking...":"API Key Not Configured"};if(key(env))try{const r=await fetch(SK+"/test",{headers:{"x-access-key":key(env),Accept:"application/json"}}),d=await read(r);out.httpStatus=r.status;out.upstreamMessage=msg(d,r.statusText);out.status=r.ok&&d?.success!==false?"SocialKit Access OK":"SocialKit API Error";try{const c=await fetch(SK+"/credits",{headers:{"x-access-key":key(env),Accept:"application/json"}}),cd=await read(c);if(c.ok&&cd?.success!==false)out.credits=cd.data||null}catch{}}catch(e){out.httpStatus=0;out.upstreamMessage=e instanceof Error?e.message:"Connection failed.";out.status="SocialKit Connection Error"}return json(out)}
 async function applyBranding(response){
-const type=response.headers.get("content-type")||"";
-if(!type.includes("text/html"))return response;
-const html=await response.text();
-const combined="/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png";
-const icon="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
-const wordmark="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
-const native=`<div class="akhisave-ad-native"><script async="async" data-cfasync="false" src="https://pl31187879.profitableratecpmnetwork.com/70d4c0990517d13f426b27f0fcfc6836/invoke.js"></script><div id="container-70d4c0990517d13f426b27f0fcfc6836"></div></div>`;
-const social=`<script src="https://pl31187881.profitableratecpmnetwork.com/20/75/4e/20754e0404354192e3bcd9768fd82678.js"></script>`;
-let out=html.replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png",combined).replaceAll("/akhisave-mark.svg",icon);
-out=out.replace(/(<link[^>]+rel=[\"'](?:icon|shortcut icon)[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon);
-out=out.replace(/(<link[^>]+rel=[\"']apple-touch-icon[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon);
-out=out.replace(/(<div class=[\"']ad[\"'][^>]*>.*?<\/div>)/is,native);
-out=out.replace(/(<header[^>]*>.*?<\/header>)/is,"$1"+native);
-out=out.replace(/<\/body>/i,native+social+"</body>");
-out=out.replaceAll("AkhiSave © 2026",`<img class="footer-brand" src="${wordmark}" alt="AkhiSave"> © 2026`);
-const css=`<style id="akhisave-branding-fix">
-.brand strong,.brand b{display:none!important}.brand img{width:170px!important;height:58px!important;object-fit:contain!important;border-radius:0!important}.topbar .brand:before,.drawerbox .brand:before,#loginView .brand:before{content:none!important;display:none!important;background:none!important;box-shadow:none!important}.loginbox .logo{content:url('${icon}')!important;object-fit:contain!important}.footer-brand{display:inline-block;width:110px;height:24px;object-fit:contain;vertical-align:middle}.akhisave-ad-native{width:100%;min-height:250px;display:flex;justify-content:center;align-items:center;margin:18px auto;overflow:hidden}.akhisave-ad-native>div{max-width:100%}@media(max-width:600px){.brand img{width:150px!important;height:52px!important}.akhisave-ad-native{min-height:250px;margin:14px auto}}
-</style>`;
-out=out.replace(/<\/head>/i,css+"</head>");
-const headers=new Headers(response.headers);headers.delete("content-length");headers.delete("content-encoding");
-return new Response(out,{status:response.status,statusText:response.statusText,headers})
+  const type=response.headers.get("content-type")||"";
+  if(!type.includes("text/html"))return response;
+  const html=await response.text();
+  const combined="/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png";
+  const icon="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
+  const wordmark="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
+  const nativeAd=`<div class="akhisave-ad-native"><script async="async" data-cfasync="false" src="https://pl31187879.profitableratecpmnetwork.com/70d4c0990517d13f426b27f0fcfc6836/invoke.js"></script><div id="container-70d4c0990517d13f426b27f0fcfc6836"></div></div>`;
+  const socialBar=`<script src="https://pl31187881.profitableratecpmnetwork.com/20/75/4e/20754e0404354192e3bcd9768fd82678.js"></script>`;
+  let out=html.replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png",combined).replaceAll("/akhisave-mark.svg",icon);
+  out=out.replace(/(<link[^>]+rel=[\"'](?:icon|shortcut icon)[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon).replace(/(<link[^>]+rel=[\"']apple-touch-icon[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon);
+  out=out.replaceAll("AkhiSave © 2026",`<img class="footer-brand" src="${wordmark}" alt="AkhiSave"> © 2026`);
+  out=out.replace(/<header[^>]*>/i,m=>m+nativeAd);
+  const marker=/<div[^>]+class=[\"'][^\"']*ad[^\"']*[\"'][^>]*>.*?<\/div>/is;
+  if(marker.test(out))out=out.replace(marker,nativeAd);
+  else out=out.replace(/<\/main>/i,nativeAd+"</main>");
+  out=out.replace(/<\/body>/i,socialBar+"</body>");
+  const css=`<style id="akhisave-branding-fix">.brand strong,.brand b{display:none!important}.brand img{width:170px!important;height:58px!important;object-fit:contain!important;border-radius:0!important}.topbar .brand:before,.drawerbox .brand:before,#loginView .brand:before{content:none!important;display:none!important;background:none!important;box-shadow:none!important}.loginbox .logo{content:url('${icon}')!important;object-fit:contain!important}.footer-brand{display:inline-block;width:110px;height:24px;object-fit:contain;vertical-align:middle}.akhisave-ad-native{display:flex;justify-content:center;align-items:center;min-height:250px;width:100%;margin:18px auto;overflow:hidden}@media(max-width:600px){.brand img{width:150px!important;height:52px!important}.akhisave-ad-native{min-height:250px;max-width:100%;overflow:hidden}}</style>`;
+  out=out.replace(/<\/head>/i,css+"</head>");
+  const headers=new Headers(response.headers);headers.delete("content-length");headers.delete("content-encoding");
+  return new Response(out,{status:response.status,statusText:response.statusText,headers});
 }
 export default{async fetch(request,env,ctx){const u=new URL(request.url);if(u.pathname==="/api/admin/socialkit-check")return adminCheck(request,env,ctx);if(u.pathname==="/api/instagram/profile"&&request.method==="POST")return profileProxy(request,env);if(u.pathname==="/api/instagram/posts"&&request.method==="POST")return feedProxy(request,env,"/instagram/channel-posts");if(u.pathname==="/api/instagram/reels"&&request.method==="POST")return feedProxy(request,env,"/instagram/channel-reels");if(u.pathname==="/api/download"&&request.method==="POST")return download(request,env);if(u.pathname==="/api/download-file"&&request.method==="POST")return downloadFile(request,env);return applyBranding(await app.fetch(request,env,ctx))}};
