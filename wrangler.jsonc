@@ -6,7 +6,14 @@
     "directory": ".",
     "binding": "ASSETS",
     "run_worker_first": [
-      "/api/*"
+      "/api/*",
+      "/"
     ]
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "AKHISAVE_SETTINGS",
+      "id": "6284d8922cc2495ba123080e879679da"
+    }
+  ]
 }
