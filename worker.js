@@ -22,6 +22,21 @@ export default {
       return json({ success: true, downloader: Boolean(env.SOCLIP_API_KEY), instagram: false, storage: Boolean(env.AKHISAVE_SETTINGS) });
     }
 
+    if (url.pathname === "/api/admin/tools") {
+      if (!(await isAdmin(request, env))) return json({ success: false, error: "Unauthorized" }, 401);
+      if (!env.AKHISAVE_SETTINGS) return json({ success: false, error: "Settings storage is not connected yet." }, 503);
+      if (request.method === "GET") return json({ success: true, tools: await getCustomTools(env) });
+      if (request.method === "PUT") {
+        try {
+          const body = await request.json();
+          const tools = sanitizeCustomTools(body.tools);
+          await env.AKHISAVE_SETTINGS.put("custom_tools", JSON.stringify(tools));
+          return json({ success: true, tools });
+        } catch { return json({ success: false, error: "Could not save tools." }, 400); }
+      }
+      return json({ success: false, error: "Method not allowed" }, 405);
+    }
+
     if (url.pathname === "/api/admin/settings") {
       if (!(await isAdmin(request, env))) return json({ success: false, error: "Unauthorized" }, 401);
       if (!env.AKHISAVE_SETTINGS) return json({ success: false, error: "Settings storage is not connected yet." }, 503);
@@ -37,7 +52,7 @@ export default {
       return json({ success: false, error: "Method not allowed" }, 405);
     }
 
-    if (url.pathname === "/api/site-config") return json({ success: true, settings: await getSettings(env) });
+    if (url.pathname === "/api/site-config") return json({ success: true, settings: await getSettings(env), tools: await getCustomTools(env) });
 
     if (url.pathname === "/api/admin/logout") {
       if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
@@ -115,6 +130,32 @@ const DEFAULT_SETTINGS = {
   ads: { monetag: true, zone: "11717101" },
   seo: { title: "Instagram Downloader - Photos, Reels, Videos & Stories | AkhiSave", description: "AkhiSave is a fast Instagram downloader to download public Instagram photos, reels, videos and stories by URL. No password required." }
 };
+
+
+async function getCustomTools(env) {
+  const defaults = [
+    { id: "photo-crop", name: "Image Crop", icon: "✂️", type: "image-crop", enabled: false, description: "Crop an image directly in your browser." },
+    { id: "image-pdf", name: "Image to PDF", icon: "📄", type: "image-pdf", enabled: false, description: "Turn an image into a downloadable PDF." },
+    { id: "image-compress", name: "Image Compressor", icon: "🗜️", type: "image-compress", enabled: false, description: "Compress an image before downloading." }
+  ];
+  if (!env.AKHISAVE_SETTINGS) return defaults;
+  try { const raw=await env.AKHISAVE_SETTINGS.get("custom_tools"); return raw ? sanitizeCustomTools(JSON.parse(raw)) : defaults; } catch { return defaults; }
+}
+
+function sanitizeCustomTools(input) {
+  const allowed = new Set(["image-crop","image-pdf","image-compress","url-downloader"]);
+  if (!Array.isArray(input)) return [];
+  return input.slice(0,50).map((x,i)=>({
+    id: cleanText(x?.id || `tool-${i+1}`,50).replace(/[^a-zA-Z0-9_-]/g,"-"),
+    name: cleanText(x?.name || "Custom Tool",50),
+    icon: cleanText(x?.icon || "🧰",8),
+    type: allowed.has(x?.type) ? x.type : "image-crop",
+    enabled: x?.enabled !== false,
+    description: cleanText(x?.description || "AkhiSave utility tool.",160),
+    button: cleanText(x?.button || "Start",30),
+    placeholder: cleanText(x?.placeholder || "Choose a file",120)
+  }));
+}
 
 async function getSettings(env) {
   if (!env.AKHISAVE_SETTINGS) return structuredClone(DEFAULT_SETTINGS);

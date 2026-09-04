@@ -42,6 +42,14 @@
     </div>
 
     <div class="section card">
+      <h2>Tool Manager</h2>
+      <p class="muted small">Add, edit, enable or delete tools from this panel. Built-in tool templates run without exposing API keys.</p>
+      <div id="toolList"></div>
+      <div class="actions"><button id="addTool" class="btn">＋ Add New Tool</button></div>
+      <div id="toolEditor" class="notice" style="display:none"></div>
+    </div>
+
+    <div class="section card">
       <h2>Instagram Tools</h2>
       <p class="muted small">Turn public homepage tools on or off. The setting is saved in Cloudflare KV.</p>
       <div class="row"><div><b>Photo Downloader</b><div class="muted small">Instagram photos & carousel photos</div></div><input id="photo" class="switch" type="checkbox"></div>
@@ -96,7 +104,20 @@ document.getElementById('save').addEventListener('click',async()=>{const msg=doc
 document.getElementById('reset').addEventListener('click',()=>{if(confirm('Reset all admin settings to defaults?')){fill(DEFAULTS);document.getElementById('saveMessage').textContent='Defaults loaded. Tap Save Changes to apply them.'}});
 document.getElementById('logout').addEventListener('click',async()=>{await api('/api/admin/logout',{method:'POST'});showLogin()});
 function toast(text){const t=document.getElementById('toast');t.textContent=text;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
-loadSession();async function loadSession(){const r=await api('/api/admin/status');if(r.ok)showAdmin();else showLogin()}
+
+let customTools=[];
+async function loadTools(){const r=await api('/api/admin/tools');if(r.ok){customTools=r.data.tools||[];renderTools()}}
+function renderTools(){const box=document.getElementById('toolList');box.innerHTML=customTools.length?customTools.map((t,i)=>`<div class="row"><div><b>${escapeText(t.icon)} ${escapeText(t.name)}</b><div class="muted small">${escapeText(t.description)} · ${escapeText(t.type)}</div></div><div class="actions"><input class="switch" type="checkbox" ${t.enabled?'checked':''} onchange="toggleTool(${i},this.checked)"><button class="btn secondary" onclick="editTool(${i})">Edit</button><button class="btn secondary" onclick="deleteTool(${i})">Delete</button></div></div>`).join(''):'<div class="empty">No custom tools yet. Tap ＋ Add New Tool.</div>'}
+function escapeText(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function editTool(i){const t=customTools[i];const e=document.getElementById('toolEditor');e.style.display='block';e.innerHTML=`<b>Edit Tool</b><div class="field"><label>Name</label><input id="teName" value="${escapeText(t.name)}"></div><div class="field"><label>Icon</label><input id="teIcon" value="${escapeText(t.icon)}"></div><div class="field"><label>Type</label><select id="teType"><option value="image-crop">Image Crop</option><option value="image-pdf">Image to PDF</option><option value="image-compress">Image Compressor</option><option value="url-downloader">URL Downloader</option></select></div><div class="field"><label>Description</label><input id="teDesc" value="${escapeText(t.description)}"></div><div class="actions"><button class="btn save" onclick="saveTool(${i})">Save Tool</button><button class="btn secondary" onclick="cancelToolEdit()">Cancel</button></div>`;document.getElementById('teType').value=t.type}
+function addTool(){customTools.push({id:'tool-'+Date.now(),name:'New Tool',icon:'🧰',type:'image-crop',enabled:true,description:'New AkhiSave utility tool.',button:'Start',placeholder:'Choose a file'});editTool(customTools.length-1)}
+function saveTool(i){const t=customTools[i];t.name=document.getElementById('teName').value;t.icon=document.getElementById('teIcon').value;t.type=document.getElementById('teType').value;t.description=document.getElementById('teDesc').value;persistTools()}
+function toggleTool(i,v){customTools[i].enabled=v;persistTools()}
+function deleteTool(i){if(confirm('Delete this tool?')){customTools.splice(i,1);persistTools()}}
+async function persistTools(){const r=await api('/api/admin/tools',{method:'PUT',body:JSON.stringify({tools:customTools})});if(r.ok){customTools=r.data.tools||[];renderTools();cancelToolEdit();toast('Tools saved')}else toast(r.data.error||'Could not save tools')}
+function cancelToolEdit(){const e=document.getElementById('toolEditor');e.style.display='none';e.innerHTML=''}
+document.getElementById('addTool').addEventListener('click',addTool);
+loadSession();async function loadSession(){const r=await api('/api/admin/status');if(r.ok){showAdmin();loadTools()}else showLogin()}
 </script>
 </body>
 </html>
