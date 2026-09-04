@@ -19,7 +19,7 @@ export default {
 
     if (url.pathname === "/api/admin/status") {
       if (!(await isAdmin(request, env))) return json({ success: false, error: "Unauthorized" }, 401);
-      return json({ success: true, downloader: Boolean(env.SOCLIP_API_KEY), instagram: Boolean(env.INSTAGRAM_API_KEY), storage: Boolean(env.AKHISAVE_SETTINGS) });
+      return json({ success: true, downloader: Boolean(env.SOCLIP_API_KEY), instagram: false, storage: Boolean(env.AKHISAVE_SETTINGS) });
     }
 
     if (url.pathname === "/api/admin/settings") {
@@ -82,9 +82,6 @@ export default {
       } catch { return json({ success: false, error: "Download failed. Please try again." }, 500); }
     }
 
-    const apiRoutes = [["/api/profile", "/profile"],["/api/profile/about", "/profile/about"],["/api/profile/posts", "/profile/posts"],["/api/profile/reels", "/profile/reels"],["/api/profile/stories", "/profile/stories"],["/api/profile/highlights", "/profile/highlights"],["/api/profile/followers", "/profile/followers"],["/api/profile/following", "/profile/following"],["/api/post", "/post"],["/api/post/comments", "/post/comments"],["/api/post/likers", "/post/likers"],["/api/search/users", "/search/users"],["/api/search/hashtags", "/search/hashtags"],["/api/search/locations", "/search/locations"],["/api/hashtag/top", "/hashtag/top"],["/api/hashtag/recent", "/hashtag/recent"],["/api/location", "/location"],["/api/location/posts", "/location/posts"],["/api/credits", "/credits"]];
-    for (const [localPath, remotePath] of apiRoutes) if (url.pathname === localPath) return instagramAPI(env, remotePath, url.searchParams);
-
     if (url.pathname === "/api/proxy-media") {
       const target = url.searchParams.get("url");
       if (!target) return json({ success: false, error: "Media URL is required." }, 400);
@@ -114,9 +111,9 @@ export default {
 const DEFAULT_SETTINGS = {
   maintenance: false,
   announcement: "",
-  tools: { photo: true, reels: true, video: true, story: true, profile: true, youtube: false, facebook: false, tiktok: false },
+  tools: { photo: true, reels: true, video: true, story: true, profile: false, youtube: false, facebook: false, tiktok: false },
   ads: { monetag: true, zone: "11717101" },
-  seo: { title: "Instagram Downloader - Photos, Reels, Videos & Stories | AkhiSave", description: "AkhiSave is a fast Instagram downloader to download public Instagram photos, reels, videos and stories by URL or username. No password required." }
+  seo: { title: "Instagram Downloader - Photos, Reels, Videos & Stories | AkhiSave", description: "AkhiSave is a fast Instagram downloader to download public Instagram photos, reels, videos and stories by URL. No password required." }
 };
 
 async function getSettings(env) {
@@ -136,7 +133,7 @@ function sanitizeSettings(input) {
   return {
     maintenance: Boolean(s.maintenance),
     announcement: cleanText(s.announcement, 180),
-    tools: { photo: tools.photo !== false, reels: tools.reels !== false, video: tools.video !== false, story: tools.story !== false, profile: tools.profile !== false, youtube: Boolean(tools.youtube), facebook: Boolean(tools.facebook), tiktok: Boolean(tools.tiktok) },
+    tools: { photo: tools.photo !== false, reels: tools.reels !== false, video: tools.video !== false, story: tools.story !== false, profile: false, youtube: Boolean(tools.youtube), facebook: Boolean(tools.facebook), tiktok: Boolean(tools.tiktok) },
     ads: { monetag: ads.monetag !== false, zone: cleanText(ads.zone || DEFAULT_SETTINGS.ads.zone, 30).replace(/[^0-9]/g, "").slice(0, 20) || DEFAULT_SETTINGS.ads.zone },
     seo: { title: cleanText(seo.title || DEFAULT_SETTINGS.seo.title, 140), description: cleanText(seo.description || DEFAULT_SETTINGS.seo.description, 220) }
   };
@@ -162,7 +159,7 @@ async function applyRuntimeSettings(response, settings) {
   }
 
   const configScript = `<script>window.AKHISAVE_CONFIG=${JSON.stringify(settings)};</script>`;
-  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.announcement){const b=document.getElementById('akhisave-announcement');if(b){const h=b.offsetHeight;document.body.style.paddingTop=h+'px';window.addEventListener('resize',()=>{document.body.style.paddingTop=b.offsetHeight+'px'})}}if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
+  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.announcement){const b=document.getElementById('akhisave-announcement');if(b){document.body.style.paddingTop=b.offsetHeight+'px';window.addEventListener('resize',()=>{document.body.style.paddingTop=b.offsetHeight+'px'})}}if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}const fix=()=>{const q=document.getElementById('query'),g=document.getElementById('go');if(q){q.placeholder='Paste Instagram URL...';}const d=document.getElementById('desc');if(d){d.textContent='Paste a public Instagram URL and download the available media.';}document.querySelectorAll('.qualities .btn').forEach(b=>{if(/^⬇\s*Media$/i.test(b.textContent.trim()))b.textContent='⬇ Download';});if(g){g.textContent='Download';g.onclick=()=>{const v=q?q.value.trim():'';if(!v){if(typeof msg==='function')msg('Please enter an Instagram URL.','#dc2626');return}if(typeof validUrl==='function'&&!validUrl(v)){if(typeof msg==='function')msg('Please enter a valid Instagram URL.','#dc2626');return}if(typeof resolve==='function')resolve(v);};}};fix();const observer=new MutationObserver(fix);observer.observe(document.body,{childList:true,subtree:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
   html = html.replace(/<\/head>/i, `${configScript}${controlScript}</head>`);
   if (settings.ads.monetag === false) html = html.replace(/<script>\(function\(s\)\{s\.dataset\.zone='11717101',s\.src='https:\/\/nap5k\.com\/tag\.min\.js'\}\)\([^<]*?<\/script>/gi, "");
 
@@ -195,14 +192,6 @@ async function isAdmin(request, env) {
 
 async function createAdminToken(expires, password) { const signature = await signAdminToken(expires, password); return btoa(`${expires}.${signature}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
 async function signAdminToken(value, password) { const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]); const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)); return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join(""); }
-
-async function instagramAPI(env, endpoint, params) {
-  if (!env.INSTAGRAM_API_KEY) return json({ success: false, error: "Instagram API is not configured yet." }, 503);
-  const apiUrl = new URL(`https://api.instagramapi.dev/v1${endpoint}`);
-  for (const [key, value] of params.entries()) apiUrl.searchParams.set(key, value);
-  try { const r = await fetch(apiUrl.toString(), { headers: { Authorization: `Bearer ${env.INSTAGRAM_API_KEY}`, Accept: "application/json" } }); return json(await safeJson(r), r.status); }
-  catch { return json({ success: false, error: "Instagram API request failed." }, 502); }
-}
 
 function isInstagramUrl(value) { try { const u = new URL(value); return /^https?:$/.test(u.protocol) && /(^|\.)instagram\.com$/i.test(u.hostname); } catch { return false; } }
 function isAllowedMediaHost(hostname) { const h = hostname.toLowerCase(); return h === "instagram.com" || h.endsWith(".instagram.com") || h.endsWith(".cdninstagram.com") || h === "cdninstagram.com" || h === "fbcdn.net" || h.endsWith(".fbcdn.net"); }
