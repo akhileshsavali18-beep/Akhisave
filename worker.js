@@ -53,7 +53,7 @@ export default {
         const instagramUrl = String(body.url || "").trim();
         if (!isInstagramUrl(instagramUrl)) return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
         if (!env.SOCLIP_API_KEY) return json({ success: false, error: "Downloader is not configured yet." }, 503);
-        const r = await fetch("https://api.soclip.dev/v1/media", { method: "POST", headers: { Authorization: `Bearer ${env.SOCLIP_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ url: instagramUrl }) });
+        const r = await fetch("https://api.soclip.dev/v1/media", { method: "POST", headers: { Authorization: `Bearer ${normalizeApiKey(env.SOCLIP_API_KEY)}`, "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify({ url: instagramUrl }) });
         return json(await safeJson(r), r.status);
       } catch { return json({ success: false, error: "Something went wrong. Please try again." }, 500); }
     }
@@ -66,7 +66,7 @@ export default {
         const mediaIndex = Math.max(0, Number(body.index || 0));
         if (!isInstagramUrl(instagramUrl)) return json({ success: false, error: "Please enter a valid Instagram URL." }, 400);
         if (!env.SOCLIP_API_KEY) return json({ success: false, error: "Downloader is not configured yet." }, 503);
-        const r = await fetch("https://api.soclip.dev/v1/media", { method: "POST", headers: { Authorization: `Bearer ${env.SOCLIP_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ url: instagramUrl }) });
+        const r = await fetch("https://api.soclip.dev/v1/media", { method: "POST", headers: { Authorization: `Bearer ${normalizeApiKey(env.SOCLIP_API_KEY)}`, "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify({ url: instagramUrl }) });
         const data = await safeJson(r);
         if (!r.ok) return json(data, r.status);
         const medias = data?.data?.medias || data?.medias || [];
@@ -192,6 +192,10 @@ async function isAdmin(request, env) {
 
 async function createAdminToken(expires, password) { const signature = await signAdminToken(expires, password); return btoa(`${expires}.${signature}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
 async function signAdminToken(value, password) { const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]); const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)); return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join(""); }
+
+function normalizeApiKey(value) {
+  return String(value || "").trim().replace(/^Bearer\s+/i, "").replace(/^['\"]|['\"]$/g, "").trim();
+}
 
 function isInstagramUrl(value) { try { const u = new URL(value); return /^https?:$/.test(u.protocol) && /(^|\.)instagram\.com$/i.test(u.hostname); } catch { return false; } }
 function isAllowedMediaHost(hostname) { const h = hostname.toLowerCase(); return h === "instagram.com" || h.endsWith(".instagram.com") || h.endsWith(".cdninstagram.com") || h === "cdninstagram.com" || h === "fbcdn.net" || h.endsWith(".fbcdn.net"); }
