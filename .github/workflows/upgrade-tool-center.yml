@@ -1,0 +1,111 @@
+name: Upgrade Tool Center
+on:
+  push:
+    paths:
+      - '.github/workflows/upgrade-tool-center.yml'
+permissions:
+  contents: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upgrade worker tool registry
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('worker.js')
+          s=p.read_text()
+          start=s.index('async function getCustomTools(env) {')
+          end=s.index('\n\nasync function getSettings(env) {', start)
+          new=r'''async function getCustomTools(env) {
+  const defaults = [
+    { id:'instagram-photo', platform:'instagram', name:'Photo Downloader', icon:'📷', engine:'social-url', type:'social-url', enabled:true, description:'Download public Instagram photos and carousel media.', button:'Download', placeholder:'Paste Instagram photo URL', order:10 },
+    { id:'instagram-reels', platform:'instagram', name:'Reels Downloader', icon:'🎬', engine:'social-url', type:'social-url', enabled:true, description:'Download public Instagram reels.', button:'Download', placeholder:'Paste Instagram Reel URL', order:20 },
+    { id:'instagram-video', platform:'instagram', name:'Video Downloader', icon:'🎥', engine:'social-url', type:'social-url', enabled:true, description:'Download public Instagram videos.', button:'Download', placeholder:'Paste Instagram video URL', order:30 },
+    { id:'instagram-story', platform:'instagram', name:'Story Downloader', icon:'⭕', engine:'social-url', type:'social-url', enabled:true, description:'Download supported public Instagram stories.', button:'Download', placeholder:'Paste Instagram Story URL', order:40 },
+    { id:'instagram-dp', platform:'instagram', name:'DP Viewer', icon:'👤', engine:'social-url', type:'social-url', enabled:true, description:'View media returned for a public Instagram profile URL.', button:'View DP', placeholder:'Paste Instagram profile URL', order:50 },
+    { id:'youtube-downloader', platform:'youtube', name:'YouTube Downloader', icon:'▶️', engine:'social-url', type:'social-url', enabled:false, description:'Download supported public YouTube videos and Shorts.', button:'Download', placeholder:'Paste YouTube URL', order:60 },
+    { id:'tiktok-downloader', platform:'tiktok', name:'TikTok Downloader', icon:'🎵', engine:'social-url', type:'social-url', enabled:false, description:'Download supported public TikTok videos.', button:'Download', placeholder:'Paste TikTok URL', order:70 },
+    { id:'facebook-downloader', platform:'facebook', name:'Facebook Downloader', icon:'📘', engine:'social-url', type:'social-url', enabled:false, description:'Download supported public Facebook media.', button:'Download', placeholder:'Paste Facebook URL', order:80 },
+    { id:'image-crop', platform:'utility', name:'Image Crop', icon:'✂️', engine:'image-crop', type:'image-crop', enabled:false, description:'Crop an image directly in the browser.', button:'Crop & Download', placeholder:'Choose an image', order:90 },
+    { id:'image-pdf', platform:'utility', name:'Image to PDF', icon:'📄', engine:'image-pdf', type:'image-pdf', enabled:false, description:'Turn an image into a downloadable PDF.', button:'Create PDF', placeholder:'Choose an image', order:100 },
+    { id:'image-compress', platform:'utility', name:'Image Compressor', icon:'🗜️', engine:'image-compress', type:'image-compress', enabled:false, description:'Compress an image before downloading.', button:'Compress & Download', placeholder:'Choose an image', order:110 }
+  ];
+  if (!env.AKHISAVE_SETTINGS) return defaults;
+  try { const raw=await env.AKHISAVE_SETTINGS.get('custom_tools'); return raw ? sanitizeCustomTools(JSON.parse(raw)) : defaults; } catch { return defaults; }
+}
+
+function sanitizeCustomTools(input) {
+  const allowedEngines = new Set(['social-url','image-crop','image-pdf','image-compress']);
+  const allowedPlatforms = new Set(['instagram','youtube','tiktok','facebook','twitter','utility','other']);
+  if (!Array.isArray(input)) return [];
+  return input.slice(0,100).map((x,i)=>({
+    id: cleanText(x?.id || `tool-${i+1}`,50).replace(/[^a-zA-Z0-9_-]/g,'-'),
+    platform: allowedPlatforms.has(x?.platform) ? x.platform : 'utility',
+    name: cleanText(x?.name || 'Custom Tool',50),
+    icon: cleanText(x?.icon || '🧰',8),
+    engine: allowedEngines.has(x?.engine) ? x.engine : (allowedEngines.has(x?.type) ? x.type : 'social-url'),
+    type: allowedEngines.has(x?.type) ? x.type : (allowedEngines.has(x?.engine) ? x.engine : 'social-url'),
+    enabled: x?.enabled !== false,
+    description: cleanText(x?.description || 'AkhiSave utility tool.',160),
+    button: cleanText(x?.button || 'Start',30),
+    placeholder: cleanText(x?.placeholder || 'Paste a URL',120),
+    order: Number.isFinite(Number(x?.order)) ? Math.max(0,Math.min(9999,Number(x.order))) : (i+1)*10
+  }));
+}
+'''
+          p.write_text(s[:start]+new+s[end:])
+          PY
+      - name: Upgrade admin tool manager
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('admin.html')
+          s=p.read_text()
+          a=s.index('<div class="section card">\n      <h2>Tool Manager</h2>')
+          b=s.index('\n    <div class="section card">\n      <h2>Ads</h2>', a)
+          block=r'''<div class="section card">
+      <h2>Tool Manager</h2>
+      <p class="muted small">One control center for Instagram, YouTube, TikTok, Facebook and utility tools. Add, edit, delete, enable/disable, reorder and customize tools without changing code.</p>
+      <div id="toolList"></div>
+      <div class="actions"><button id="addTool" class="btn">＋ Add New Tool</button></div>
+      <div id="toolEditor" class="notice" style="display:none"></div>
+    </div>'''
+          s=s[:a]+block+s[b:]
+          s=s.replace('''    <div class="grid">\n      <div class="card"><div class="muted">Website</div><div class="stat">Online</div><div class="pill">akhisave.online</div></div>\n      <div class="card"><div class="muted">Downloader API</div><div id="downloadStatus" class="stat">Checking…</div></div>\n      <div class="card"><div class="muted">Instagram API</div><div id="instagramStatus" class="stat">Checking…</div></div>\n    </div>''','''    <div class="grid">\n      <div class="card"><div class="muted">Website</div><div class="stat">Online</div><div class="pill">akhisave.online</div></div>\n      <div class="card"><div class="muted">SoClip API</div><div id="downloadStatus" class="stat">Checking…</div></div>\n      <div class="card"><div class="muted">Managed Tools</div><div id="toolCount" class="stat">Checking…</div></div>\n    </div>''')
+          # Remove old platform toggle sections because Tool Manager is now the source of truth.
+          old_start=s.find('    <div class="section card">\n      <h2>Instagram Tools</h2>')
+          old_end=s.find('\n    <div class="section card">\n      <h2>Ads</h2>', old_start)
+          if old_start!=-1 and old_end!=-1: s=s[:old_start]+s[old_end:]
+          js_start=s.index('let customTools=[];')
+          js_end=s.index('\n</script>',js_start)
+          js=r'''let customTools=[];
+async function loadTools(){const r=await api('/api/admin/tools');if(r.ok){customTools=(r.data.tools||[]).sort((a,b)=>(a.order??0)-(b.order??0));document.getElementById('toolCount').textContent=customTools.length;renderTools()}else document.getElementById('toolCount').textContent='Error'}
+function renderTools(){const box=document.getElementById('toolList');box.innerHTML=customTools.length?customTools.map((t,i)=>`<div class="row"><div><b>${escapeText(t.icon)} ${escapeText(t.name)}</b><div class="muted small">${escapeText(t.platform)} · ${escapeText(t.engine)} · ${escapeText(t.description)}</div></div><div class="actions"><input title="Enable/disable" class="switch" type="checkbox" ${t.enabled?'checked':''} onchange="toggleTool(${i},this.checked)"><button class="btn secondary" onclick="moveTool(${i},-1)">↑</button><button class="btn secondary" onclick="moveTool(${i},1)">↓</button><button class="btn secondary" onclick="editTool(${i})">Edit</button><button class="btn secondary" onclick="deleteTool(${i})">Delete</button></div></div>`).join(''):'<div class="empty">No tools configured.</div>'}
+function escapeText(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function editTool(i){const t=customTools[i],e=document.getElementById('toolEditor');e.style.display='block';e.innerHTML=`<b>Edit Tool</b><div class="field"><label>Tool Name</label><input id="teName" value="${escapeText(t.name)}"></div><div class="field"><label>Platform</label><select id="tePlatform"><option value="instagram">Instagram</option><option value="youtube">YouTube</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option><option value="twitter">X / Twitter</option><option value="utility">Utility</option><option value="other">Other</option></select></div><div class="field"><label>Tool Engine</label><select id="teEngine"><option value="social-url">Social URL Downloader</option><option value="image-crop">Image Crop</option><option value="image-pdf">Image to PDF</option><option value="image-compress">Image Compressor</option></select></div><div class="field"><label>Icon</label><input id="teIcon" value="${escapeText(t.icon)}"></div><div class="field"><label>Description</label><input id="teDesc" value="${escapeText(t.description)}"></div><div class="field"><label>Button Text</label><input id="teButton" value="${escapeText(t.button||'Start')}"></div><div class="field"><label>Input Placeholder</label><input id="tePlaceholder" value="${escapeText(t.placeholder||'Paste a URL')}"></div><div class="actions"><button class="btn save" onclick="saveTool(${i})">Save Tool</button><button class="btn secondary" onclick="cancelToolEdit()">Cancel</button></div>`;document.getElementById('tePlatform').value=t.platform||'utility';document.getElementById('teEngine').value=t.engine||t.type||'social-url'}
+function addTool(){customTools.push({id:'tool-'+Date.now(),platform:'utility',name:'New Tool',icon:'🧰',engine:'image-crop',type:'image-crop',enabled:true,description:'New AkhiSave utility tool.',button:'Start',placeholder:'Choose a file',order:customTools.length*10+10});editTool(customTools.length-1)}
+function saveTool(i){const t=customTools[i];t.name=document.getElementById('teName').value;t.platform=document.getElementById('tePlatform').value;t.engine=document.getElementById('teEngine').value;t.type=t.engine;t.icon=document.getElementById('teIcon').value;t.description=document.getElementById('teDesc').value;t.button=document.getElementById('teButton').value;t.placeholder=document.getElementById('tePlaceholder').value;persistTools()}
+function toggleTool(i,v){customTools[i].enabled=v;persistTools()}
+function moveTool(i,d){const j=i+d;if(j<0||j>=customTools.length)return;[customTools[i],customTools[j]]=[customTools[j],customTools[i]];customTools.forEach((t,n)=>t.order=(n+1)*10);persistTools()}
+function deleteTool(i){if(confirm('Delete this tool?')){customTools.splice(i,1);customTools.forEach((t,n)=>t.order=(n+1)*10);persistTools()}}
+async function persistTools(){const r=await api('/api/admin/tools',{method:'PUT',body:JSON.stringify({tools:customTools})});if(r.ok){customTools=(r.data.tools||[]).sort((a,b)=>(a.order??0)-(b.order??0));renderTools();document.getElementById('toolCount').textContent=customTools.length;cancelToolEdit();toast('Tools saved')}else toast(r.data.error||'Could not save tools')}
+function cancelToolEdit(){const e=document.getElementById('toolEditor');e.style.display='none';e.innerHTML=''}
+document.getElementById('addTool').addEventListener('click',addTool);
+'''
+          s=s[:js_start]+js+s[js_end:]
+          # Make status loader stop referencing removed Instagram card.
+          s=s.replace("document.getElementById('instagramStatus').textContent=st.data.instagram?'Ready':'Not configured';","")
+          s=s.replace("if(r.ok)fill(r.data.settings);else document.getElementById('saveMessage').textContent=r.data.error||'Could not load settings.'","if(r.ok)fill(r.data.settings);else document.getElementById('saveMessage').textContent=r.data.error||'Could not load settings.';loadTools()")
+          # Settings no longer owns platform tool toggles; keep compatibility but don't show them.
+          p.write_text(s)
+          PY
+      - name: Remove stale workflow
+        run: |
+          rm -f .github/workflows/upgrade-tool-center.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add worker.js admin.html .github/workflows/upgrade-tool-center.yml
+          git commit -m 'Make admin tool manager control all platforms' || exit 0
+          git push
