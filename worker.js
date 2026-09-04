@@ -111,7 +111,7 @@ export default {
 const DEFAULT_SETTINGS = {
   maintenance: false,
   announcement: "",
-  tools: { photo: true, reels: true, video: true, story: true, profile: false, youtube: false, facebook: false, tiktok: false },
+  tools: { photo: true, reels: true, video: true, story: true, profile: true, youtube: false, facebook: false, tiktok: false },
   ads: { monetag: true, zone: "11717101" },
   seo: { title: "Instagram Downloader - Photos, Reels, Videos & Stories | AkhiSave", description: "AkhiSave is a fast Instagram downloader to download public Instagram photos, reels, videos and stories by URL. No password required." }
 };
@@ -133,7 +133,7 @@ function sanitizeSettings(input) {
   return {
     maintenance: Boolean(s.maintenance),
     announcement: cleanText(s.announcement, 180),
-    tools: { photo: tools.photo !== false, reels: tools.reels !== false, video: tools.video !== false, story: tools.story !== false, profile: false, youtube: Boolean(tools.youtube), facebook: Boolean(tools.facebook), tiktok: Boolean(tools.tiktok) },
+    tools: { photo: tools.photo !== false, reels: tools.reels !== false, video: tools.video !== false, story: tools.story !== false, profile: true, youtube: Boolean(tools.youtube), facebook: Boolean(tools.facebook), tiktok: Boolean(tools.tiktok) },
     ads: { monetag: ads.monetag !== false, zone: cleanText(ads.zone || DEFAULT_SETTINGS.ads.zone, 30).replace(/[^0-9]/g, "").slice(0, 20) || DEFAULT_SETTINGS.ads.zone },
     seo: { title: cleanText(seo.title || DEFAULT_SETTINGS.seo.title, 140), description: cleanText(seo.description || DEFAULT_SETTINGS.seo.description, 220) }
   };
@@ -159,7 +159,7 @@ async function applyRuntimeSettings(response, settings) {
   }
 
   const configScript = `<script>window.AKHISAVE_CONFIG=${JSON.stringify(settings)};</script>`;
-  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.announcement){const b=document.getElementById('akhisave-announcement');if(b){document.body.style.paddingTop=b.offsetHeight+'px';window.addEventListener('resize',()=>{document.body.style.paddingTop=b.offsetHeight+'px'})}}if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}const fix=()=>{const q=document.getElementById('query'),g=document.getElementById('go');if(q){q.placeholder='Paste Instagram URL...';}const d=document.getElementById('desc');if(d){d.textContent='Paste a public Instagram URL and download the available media.';}document.querySelectorAll('.qualities .btn').forEach(b=>{if(/^⬇\s*Media$/i.test(b.textContent.trim()))b.textContent='⬇ Download';});if(g){g.textContent='Download';g.onclick=()=>{const v=q?q.value.trim():'';if(!v){if(typeof msg==='function')msg('Please enter an Instagram URL.','#dc2626');return}if(typeof validUrl==='function'&&!validUrl(v)){if(typeof msg==='function')msg('Please enter a valid Instagram URL.','#dc2626');return}if(typeof resolve==='function')resolve(v);};}};fix();const observer=new MutationObserver(fix);observer.observe(document.body,{childList:true,subtree:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
+  const controlScript = `<script>(function(){const c=window.AKHISAVE_CONFIG||{};const t=c.tools||{};const map={photo:'photo',reels:'reels',video:'video',story:'story',profile:'profile'};function apply(){Object.keys(map).forEach(k=>{if(t[k]===false){document.querySelectorAll('[data-type="'+map[k]+'"], [data-tab="'+map[k]+'"]').forEach(e=>e.style.display='none')}});if(c.announcement){const b=document.getElementById('akhisave-announcement');if(b){document.body.style.paddingTop=b.offsetHeight+'px';window.addEventListener('resize',()=>{document.body.style.paddingTop=b.offsetHeight+'px'})}}if(c.ads&&c.ads.monetag===false){document.querySelectorAll('script[src*="nap5k.com/tag.min.js"]').forEach(e=>e.remove())}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply()})();</script>`;
   html = html.replace(/<\/head>/i, `${configScript}${controlScript}</head>`);
   if (settings.ads.monetag === false) html = html.replace(/<script>\(function\(s\)\{s\.dataset\.zone='11717101',s\.src='https:\/\/nap5k\.com\/tag\.min\.js'\}\)\([^<]*?<\/script>/gi, "");
 
