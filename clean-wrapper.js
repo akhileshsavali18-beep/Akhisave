@@ -21,6 +21,7 @@ function cleanHtml(html){
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/\bADVERTISEMENT\b/gi,"");
 
+  // Keep the existing branding exactly as-is.
   out=out.replaceAll(OLD_LOGO,COMBINED_LOGO);
   out=out.replaceAll("/akhisave-mark.svg",LOGO_ONLY);
   out=out.replace(/(<a\s+class=["']brand["'][^>]*>)[\s\S]*?(<\/a>)/i,
@@ -40,10 +41,14 @@ function cleanHtml(html){
 </style>`;
   out=out.replace(/<\/head>/i,css+"</head>");
 
-  // Exactly three banner placements: after header, after hero/content, and before footer.
+  // Exactly three banner placements: top, middle after the complete hero section, and bottom.
   out=out.replace(/<\/header>/i,"</header>"+AD_TOP);
-  const hero=/((?:<section|<div)[^>]*(?:class|id)=["'][^"']*hero[^"']*["'][^>]*>[\s\S]*?<\/(?:section|div)>)/i;
-  if(hero.test(out))out=out.replace(hero,"$1"+AD_MIDDLE);
+  const heroStart=out.search(/<section\b[^>]*(?:class|id)=["'][^"']*\bhero\b[^"']*["'][^>]*>/i);
+  if(heroStart>=0){
+    const heroEnd=out.indexOf("</section>",heroStart);
+    if(heroEnd>=0)out=out.slice(0,heroEnd+10)+AD_MIDDLE+out.slice(heroEnd+10);
+    else out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
+  }else if(/<section[^>]+id=["']tools["']/i.test(out))out=out.replace(/<section([^>]+id=["']tools["'][^>]*)>/i,middle=>AD_MIDDLE+middle);
   else out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
   if(/<footer\b/i.test(out))out=out.replace(/<footer\b/i,AD_BOTTOM+"<footer");
   else out=out.replace(/<\/main>/i,AD_BOTTOM+"</main>");
