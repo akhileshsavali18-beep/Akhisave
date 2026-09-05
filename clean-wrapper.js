@@ -1,93 +1,64 @@
 import app from "./worker-wrapper.js";
 
-const LOGO_ONLY="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
-const COMBINED_LOGO="/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png";
+const LOGO="/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png";
+const ICON="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
 const WORDMARK="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
 const OLD_LOGO="/38364009-f822-430a-9f51-694b12b8d9ef.png";
+const BAD_AD=/(monetag|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|highrevenueformat|adsterra|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)/i;
 
-// Only the requested classic banner is allowed. Notification/push/popunder formats are blocked.
-const BAD_AD=/(monetag|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165|social[-_ ]?bar|in[-_ ]?page[-_ ]?push|popunder|vignette)/i;
-
-const BANNER=`<script>atOptions={'key':'b5f10b469c2566d06ff288ac7dc9b5b2','format':'iframe','height':250,'width':300,'params':{}};</script><script src="https://www.highrevenueformat.com/b5f10b469c2566d06ff288ac7dc9b5b2/invoke.js"></script>`;
-const AD_TOP=`<div class="ak-ad-place ak-ad-top">${BANNER}</div>`;
-const AD_MIDDLE=`<div class="ak-ad-place ak-ad-middle">${BANNER}</div>`;
-const AD_BOTTOM=`<div class="ak-ad-place ak-ad-bottom">${BANNER}</div>`;
-
-function cleanHtml(html,isAdmin=false){
+function cleanHtml(html){
   let out=html;
-  out=out.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,(block)=>BAD_AD.test(block)?"":block);
-  out=out.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi,(block)=>BAD_AD.test(block)?"":block);
-  out=out.replace(/<(?:div|section|aside|ins)\b[^>]*(?:class|id|data-[^=]+)=["'][^"']*(?:social-bar|monetag|adsterra|adsbygoogle|container-70d4c0990517d13f426b27f0fcfc6836)[^"']*["'][^>]*>[\s\S]*?<\/(?:div|section|aside|ins)>/gi,"");
+
+  // Remove every known advertising script/iframe/container before the browser can execute it.
+  out=out.replace(/<script\b[^>]*(?:monetag|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|highrevenueformat|adsterra|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)[^>]*>[\s\S]*?<\/script>/gi,"");
+  out=out.replace(/<iframe\b[^>]*(?:monetag|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|highrevenueformat|adsterra)[^>]*>[\s\S]*?<\/iframe>/gi,"");
+  out=out.replace(/<div\b[^>]*(?:class|id)=["'][^"']*(?:ad-banner|ad-slot|advertisement|social-bar|monetag|adsterra|container-70d4c0990517d13f426b27f0fcfc6836)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
-  out=out.replace(/\bADVERTISEMENT\b/gi,"");
 
-  // Remove placeholder ad slots from the upstream wrapper so every page gets exactly 3 real slots.
-  out=out.replace(/<div\b[^>]*class=["'][^"']*\bakhisave-ad-slot\b[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
+  // Never show the old combined upload; the approved combined branding asset is used in the top bar.
+  out=out.replaceAll(OLD_LOGO,LOGO);
+  out=out.replaceAll("/akhisave-mark.svg",ICON);
 
-  // Keep the existing branding exactly as-is.
-  out=out.replaceAll(OLD_LOGO,COMBINED_LOGO);
-  out=out.replaceAll("/akhisave-mark.svg",LOGO_ONLY);
-  out=out.replace(/(<a\s+class=["']brand["'][^>]*>)[\s\S]*?(<\/a>)/i,
-    '$1<img class="brand-combined" src="'+COMBINED_LOGO+'" alt="AkhiSave">$2');
+  // Footer: keep AkhiSave © 2026 but remove the public-content label.
+  out=out.replace(/\s*[·•]\s*Public content only/gi,"");
 
-  const css=`<style id="akhisave-final-brand-ads">
-.brand{display:flex!important;align-items:center!important;min-width:0!important;text-decoration:none!important}
-.brand .brand-combined{content:url('${COMBINED_LOGO}')!important;width:170px!important;height:58px!important;object-fit:contain!important;display:block!important;border-radius:0!important}
-.loginbox .logo,#loginView .logo{content:url('${LOGO_ONLY}')!important;width:72px!important;height:72px!important;object-fit:contain!important;border-radius:0!important}
-.footer-brand{content:url('${WORDMARK}')!important;width:110px!important;height:28px!important;object-fit:contain!important;border-radius:0!important}
-.ak-ad-place{width:100%;max-width:300px;min-height:250px;margin:22px auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;clear:both}
-.ak-ad-place iframe{max-width:100%!important;border:0!important}
-.ak-ad-top{margin-top:16px;margin-bottom:28px}
-.ak-ad-middle{margin-top:30px;margin-bottom:30px}
-.ak-ad-bottom{margin-top:30px;margin-bottom:18px}
-@media(max-width:600px){.brand .brand-combined{width:150px!important;height:52px!important}.ak-ad-place{max-width:300px;min-height:250px;margin:18px auto}}
+  // Homepage navigation: keep the existing links but move them into the hamburger drawer.
+  if(/<header[^>]*class=["']nav["']/i.test(out)){
+    out=out.replace(/<nav\s+class=["']navlinks["']([\s\S]*?)<\/nav>/i,'<nav class="navlinks"$1</nav>');
+  }
+
+  const menu=`<button class="ak-menu-btn" id="akMenuBtn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button><div class="ak-menu-backdrop" id="akMenuBackdrop"></div><aside class="ak-menu" id="akMenu"><div class="ak-menu-head"><img src="${ICON}" alt="AkhiSave"><b>AkhiSave</b><button id="akMenuClose" aria-label="Close menu">×</button></div><a href="/#tools">Tools</a><a href="/#how">How it works</a><a href="/faq.html">FAQ</a></aside>`;
+  out=out.replace(/<\/body>/i,menu+`<script>(function(){function q(id){return document.getElementById(id)}var b=q('akMenuBtn'),m=q('akMenu'),x=q('akMenuClose'),o=q('akMenuBackdrop');if(!b)return;function set(v){document.body.classList.toggle('ak-menu-open',v);b.setAttribute('aria-expanded',String(v))}b.addEventListener('click',function(){set(true)});x&&x.addEventListener('click',function(){set(false)});o&&o.addEventListener('click',function(){set(false)});m&&m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){set(false)})})})();</script></body>`);
+
+  const css=`<style id="akhisave-unified-website-ui">
+:root{--ak-bg:#070812;--ak-panel:#0f1422;--ak-line:#ffffff12;--ak-text:#f7f8fc;--ak-muted:#8e99ad;--ak-purple:#765cff;--ak-pink:#ff3d91}
+html{background:var(--ak-bg)!important;scroll-behavior:smooth}body{background:radial-gradient(900px 500px at 0 -10%,#765cff22,transparent 62%),radial-gradient(800px 500px at 100% 0,#ff3d911b,transparent 62%),var(--ak-bg)!important;color:var(--ak-text)!important;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+header,body>header{background:#070812e8!important;border-bottom:1px solid #ffffff0b!important;color:var(--ak-text)!important;backdrop-filter:blur(20px)}
+header a{color:inherit}.brand{display:flex!important;align-items:center!important;text-decoration:none!important}.brand img{content:url('${LOGO}')!important;width:170px!important;height:58px!important;object-fit:contain!important;border-radius:0!important;display:block!important}.brand strong{display:none!important}
+.navlinks{display:none!important}
+.ak-menu-btn{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:1px solid #ffffff12;border-radius:12px;background:#0e1422;color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;z-index:120;cursor:pointer}.ak-menu-btn span{width:20px;height:2px;border-radius:2px;background:#fff}.ak-menu-backdrop{position:fixed;inset:0;background:#0008;opacity:0;pointer-events:none;transition:.2s;z-index:150}.ak-menu{position:fixed;right:14px;top:14px;width:min(300px,calc(100vw - 28px));padding:12px;border:1px solid #ffffff16;border-radius:20px;background:#0b101d;box-shadow:0 25px 80px #000b;transform:translateY(-18px);opacity:0;pointer-events:none;transition:.22s;z-index:160}.ak-menu-open .ak-menu-backdrop{opacity:1;pointer-events:auto}.ak-menu-open .ak-menu{transform:translateY(0);opacity:1;pointer-events:auto}.ak-menu-head{display:flex;align-items:center;gap:10px;padding:6px 6px 12px;border-bottom:1px solid #ffffff0d}.ak-menu-head img{width:38px;height:38px;object-fit:contain}.ak-menu-head b{flex:1;font-size:16px}.ak-menu-head button{border:0;background:transparent;color:#fff;font-size:28px;line-height:1;cursor:pointer}.ak-menu>a{display:block;padding:14px 12px;margin-top:4px;border-radius:12px;color:#aab5c8;text-decoration:none;font-size:13px;font-weight:800}.ak-menu>a:hover{background:#ffffff08;color:#fff}
+.akhisave-ad-banner,.akhisave-ad-slot,.ad,.ad-banner,.ad-slot,.social-bar,[id*="ad-"]{display:none!important}
+footer{background:transparent!important;color:#667287!important;border-top:1px solid #ffffff0b!important}footer a{color:#8b96aa!important}
+/* Sub-pages inherit the homepage look instead of the old white theme. */
+body:not(:has(.hero)) main{max-width:900px!important;margin:0 auto!important;padding:54px 18px 70px!important}body:not(:has(.hero)) main h1{font-size:clamp(38px,7vw,58px)!important;line-height:1!important;letter-spacing:-2.5px!important;color:#f7f8fc!important}body:not(:has(.hero)) main h1 span{background:linear-gradient(100deg,#fff,#bcaeff 42%,#ff6fa9 72%,#ffc37d)!important;-webkit-background-clip:text!important;color:transparent!important}body:not(:has(.hero)) main h2{color:#f7f8fc!important;font-size:20px!important}body:not(:has(.hero)) main p,body:not(:has(.hero)) main li{color:#8e99ad!important;font-size:13px!important;line-height:1.8!important}body:not(:has(.hero)) .card,body:not(:has(.hero)) .faq{background:linear-gradient(155deg,#111a2b,#0c121f)!important;border:1px solid #ffffff0d!important;border-radius:18px!important;box-shadow:none!important;color:#f7f8fc!important}body:not(:has(.hero)) .back{color:#c5b8ff!important}body:not(:has(.hero)) .notice{background:#765cff12!important;color:#aab5c8!important;border:1px solid #765cff25!important}body:not(:has(.hero)) .btn{background:linear-gradient(135deg,#765cff,#ff3d91)!important;color:#fff!important}
+@media(max-width:650px){.brand img{width:150px!important;height:52px!important}.ak-menu-btn{right:12px}.nav{height:66px}.navin{padding-right:64px!important}.ak-menu{top:10px;right:10px}body:not(:has(.hero)) main{padding:40px 13px 55px!important}body:not(:has(.hero)) main h1{font-size:40px!important}}
 </style>`;
   out=out.replace(/<\/head>/i,css+"</head>");
 
-  if(!isAdmin){
-    // TOP: directly below the page header. If a page has no header, place it after <body>.
-    if(/<header\b/i.test(out)&&/<\/header>/i.test(out)) out=out.replace(/<\/header>/i,"</header>"+AD_TOP);
-    else out=out.replace(/<body([^>]*)>/i,"<body$1>"+AD_TOP);
-
-    // MIDDLE: after the complete hero/search section on the home page. Other pages get it
-    // after their first meaningful heading, with <main> as a safe fallback.
-    const heroStart=out.search(/<section\b[^>]*(?:class|id)=["'][^"']*\bhero\b[^"']*["'][^>]*>/i);
-    if(heroStart>=0){
-      const heroEnd=out.indexOf("</section>",heroStart);
-      if(heroEnd>=0)out=out.slice(0,heroEnd+10)+AD_MIDDLE+out.slice(heroEnd+10);
-      else out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
-    }else if(/<main\b/i.test(out)&&/<h1\b/i.test(out)){
-      out=out.replace(/(<main\b[^>]*>[\s\S]*?<h1\b[\s\S]*?<\/h1>)/i,"$1"+AD_MIDDLE);
-    }else if(/<main\b/i.test(out)){
-      out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
-    }else{
-      out=out.replace(/<body([^>]*)>/i,"<body$1>"+AD_MIDDLE);
-    }
-
-    // BOTTOM: immediately before the footer; otherwise immediately before </body>.
-    if(/<footer\b/i.test(out))out=out.replace(/<footer\b/i,AD_BOTTOM+"<footer");
-    else out=out.replace(/<\/body>/i,AD_BOTTOM+"</body>");
-  }
-
-  // Remove only unwanted notification-style ads that may be injected later. Our three
-  // classic banner slots are explicitly protected.
-  const guard=`<script id="akhisave-ad-cleaner">(function(){const bad=${BAD_AD.toString()};function clean(){document.querySelectorAll('script,iframe').forEach(function(e){const s=(e.src||'')+' '+(e.textContent||'')+' '+(e.outerHTML||'');if(bad.test(s)&&!e.closest('.ak-ad-place'))e.remove()});document.querySelectorAll('[id],[class]').forEach(function(e){if(e.closest('.ak-ad-place'))return;const s=String((e.id||'')+' '+(e.className||''));if(/(?:monetag|social[-_ ]?bar|profitableratecpmnetwork|adsterra|ad[-_ ]?(?:banner|slot|container)|in[-_ ]?page[-_ ]?push|popunder|vignette)/i.test(s))e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','id','class']})})()</script>`;
+  // Runtime safety net: remove dynamically injected ad frames/scripts and keep the site clean.
+  const guard=`<script id="akhisave-ad-cleaner">(function(){const bad=${BAD_AD.toString()};function clean(){document.querySelectorAll('script,iframe').forEach(function(e){const s=(e.src||'')+' '+(e.textContent||'')+' '+(e.outerHTML||'');if(bad.test(s))e.remove()});document.querySelectorAll('[id],[class]').forEach(function(e){const s=String((e.id||'')+' '+(e.className||''));if(/(?:monetag|social[-_ ]?bar|ad[-_ ]?(?:banner|slot|container)|adsterra)/i.test(s))e.remove()});document.querySelectorAll('iframe').forEach(function(e){e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','id','class']})})()</script>`;
   out=out.replace(/<\/body>/i,guard+"</body>");
   return out;
 }
 
-async function cleanResponse(response,request){
+async function cleanResponse(response){
   const type=response.headers.get("content-type")||"";
   if(!type.includes("text/html"))return response;
-  const isAdmin=new URL(request.url).pathname.startsWith("/admin");
-  const out=cleanHtml(await response.text(),isAdmin);
+  const out=cleanHtml(await response.text());
   const headers=new Headers(response.headers);
-  headers.delete("content-length");
-  headers.delete("content-encoding");
-  headers.set("Cache-Control","no-store, no-cache, must-revalidate, max-age=0");
-  headers.set("Pragma","no-cache");
-  headers.set("Expires","0");
+  headers.delete("content-length");headers.delete("content-encoding");
+  headers.set("Cache-Control","no-store, no-cache, must-revalidate, max-age=0");headers.set("Pragma","no-cache");
   return new Response(out,{status:response.status,statusText:response.statusText,headers});
 }
 
-export default{async fetch(request,env,ctx){return cleanResponse(await app.fetch(request,env,ctx),request)}};
+export default{async fetch(request,env,ctx){const u=new URL(request.url);if(u.pathname.startsWith('/admin'))return app.fetch(request,env,ctx);return cleanResponse(await app.fetch(request,env,ctx))}};
