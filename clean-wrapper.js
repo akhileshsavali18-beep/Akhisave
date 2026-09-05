@@ -31,7 +31,7 @@ html,body{background:#fff!important;color:#172033!important}body{background-imag
     const js=`<script id="akhisave-menu-js">document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('akhisaveMenu'),n=document.querySelector('.navlinks');if(!b||!n)return;b.addEventListener('click',function(){var o=n.classList.toggle('open');b.setAttribute('aria-expanded',String(o));});n.addEventListener('click',function(e){if(e.target.closest('a'))n.classList.remove('open');});});</script>`;
     out=out.replace(/<\/body>/i,js+'</body>');
   }
-  if(!out.includes('akhisave-ad-top'))out=out.replace(/<header([^>]*)>/i,`<header$1>${AD_TOP}`);
+  if(!out.includes('akhisave-ad-top'))out=out.replace(/<\/header>/i,`</header>${AD_TOP}`);
   if(!out.includes('akhisave-ad-middle'))out=out.replace(/<\/main>/i,AD_MIDDLE+'</main>');
   return out;
 }
