@@ -13,13 +13,16 @@ const AD_TOP=`<div class="ak-ad-place ak-ad-top">${BANNER}</div>`;
 const AD_MIDDLE=`<div class="ak-ad-place ak-ad-middle">${BANNER}</div>`;
 const AD_BOTTOM=`<div class="ak-ad-place ak-ad-bottom">${BANNER}</div>`;
 
-function cleanHtml(html){
+function cleanHtml(html,isAdmin=false){
   let out=html;
   out=out.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,(block)=>BAD_AD.test(block)?"":block);
   out=out.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi,(block)=>BAD_AD.test(block)?"":block);
   out=out.replace(/<(?:div|section|aside|ins)\b[^>]*(?:class|id|data-[^=]+)=["'][^"']*(?:social-bar|monetag|adsterra|adsbygoogle|container-70d4c0990517d13f426b27f0fcfc6836)[^"']*["'][^>]*>[\s\S]*?<\/(?:div|section|aside|ins)>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/\bADVERTISEMENT\b/gi,"");
+
+  // Remove placeholder ad slots from the upstream wrapper so every page gets exactly 3 real slots.
+  out=out.replace(/<div\b[^>]*class=["'][^"']*\bakhisave-ad-slot\b[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
 
   // Keep the existing branding exactly as-is.
   out=out.replaceAll(OLD_LOGO,COMBINED_LOGO);
@@ -32,37 +35,52 @@ function cleanHtml(html){
 .brand .brand-combined{content:url('${COMBINED_LOGO}')!important;width:170px!important;height:58px!important;object-fit:contain!important;display:block!important;border-radius:0!important}
 .loginbox .logo,#loginView .logo{content:url('${LOGO_ONLY}')!important;width:72px!important;height:72px!important;object-fit:contain!important;border-radius:0!important}
 .footer-brand{content:url('${WORDMARK}')!important;width:110px!important;height:28px!important;object-fit:contain!important;border-radius:0!important}
-.ak-ad-place{width:100%;min-height:250px;margin:22px auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center}
-.ak-ad-place iframe{max-width:100%;border:0}
-.ak-ad-top{margin-top:14px;margin-bottom:26px}
-.ak-ad-middle{margin-top:28px;margin-bottom:28px}
-.ak-ad-bottom{margin-top:28px;margin-bottom:18px}
-@media(max-width:600px){.brand .brand-combined{width:150px!important;height:52px!important}.ak-ad-place{min-height:250px;margin:16px auto}}
+.ak-ad-place{width:100%;max-width:300px;min-height:250px;margin:22px auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;clear:both}
+.ak-ad-place iframe{max-width:100%!important;border:0!important}
+.ak-ad-top{margin-top:16px;margin-bottom:28px}
+.ak-ad-middle{margin-top:30px;margin-bottom:30px}
+.ak-ad-bottom{margin-top:30px;margin-bottom:18px}
+@media(max-width:600px){.brand .brand-combined{width:150px!important;height:52px!important}.ak-ad-place{max-width:300px;min-height:250px;margin:18px auto}}
 </style>`;
   out=out.replace(/<\/head>/i,css+"</head>");
 
-  // Exactly three banner placements: top, middle after the complete hero section, and bottom.
-  out=out.replace(/<\/header>/i,"</header>"+AD_TOP);
-  const heroStart=out.search(/<section\b[^>]*(?:class|id)=["'][^"']*\bhero\b[^"']*["'][^>]*>/i);
-  if(heroStart>=0){
-    const heroEnd=out.indexOf("</section>",heroStart);
-    if(heroEnd>=0)out=out.slice(0,heroEnd+10)+AD_MIDDLE+out.slice(heroEnd+10);
-    else out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
-  }else if(/<section[^>]+id=["']tools["']/i.test(out))out=out.replace(/<section([^>]+id=["']tools["'][^>]*)>/i,middle=>AD_MIDDLE+middle);
-  else out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
-  if(/<footer\b/i.test(out))out=out.replace(/<footer\b/i,AD_BOTTOM+"<footer");
-  else out=out.replace(/<\/main>/i,AD_BOTTOM+"</main>");
+  if(!isAdmin){
+    // TOP: directly below the page header. If a page has no header, place it after <body>.
+    if(/<header\b/i.test(out)&&/<\/header>/i.test(out)) out=out.replace(/<\/header>/i,"</header>"+AD_TOP);
+    else out=out.replace(/<body([^>]*)>/i,"<body$1>"+AD_TOP);
 
-  // Block only unwanted notification-style ads added later; keep our three banner placements.
-  const guard=`<script id="akhisave-ad-cleaner">(function(){const bad=${BAD_AD.toString()};function clean(){document.querySelectorAll('script,iframe').forEach(function(e){const s=(e.src||'')+' '+(e.textContent||'')+' '+(e.outerHTML||'');if(bad.test(s)&&!e.closest('.ak-ad-place'))e.remove()});document.querySelectorAll('[id],[class]').forEach(function(e){const s=String((e.id||'')+' '+(e.className||''));if(/(?:monetag|social[-_ ]?bar|profitableratecpmnetwork|adsterra|ad[-_ ]?(?:banner|slot|container)|in[-_ ]?page[-_ ]?push|popunder|vignette)/i.test(s)&&!e.closest('.ak-ad-place'))e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','id','class']})})()</script>`;
+    // MIDDLE: after the complete hero/search section on the home page. Other pages get it
+    // after their first meaningful heading, with <main> as a safe fallback.
+    const heroStart=out.search(/<section\b[^>]*(?:class|id)=["'][^"']*\bhero\b[^"']*["'][^>]*>/i);
+    if(heroStart>=0){
+      const heroEnd=out.indexOf("</section>",heroStart);
+      if(heroEnd>=0)out=out.slice(0,heroEnd+10)+AD_MIDDLE+out.slice(heroEnd+10);
+      else out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
+    }else if(/<main\b/i.test(out)&&/<h1\b/i.test(out)){
+      out=out.replace(/(<main\b[^>]*>[\s\S]*?<h1\b[\s\S]*?<\/h1>)/i,"$1"+AD_MIDDLE);
+    }else if(/<main\b/i.test(out)){
+      out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
+    }else{
+      out=out.replace(/<body([^>]*)>/i,"<body$1>"+AD_MIDDLE);
+    }
+
+    // BOTTOM: immediately before the footer; otherwise immediately before </body>.
+    if(/<footer\b/i.test(out))out=out.replace(/<footer\b/i,AD_BOTTOM+"<footer");
+    else out=out.replace(/<\/body>/i,AD_BOTTOM+"</body>");
+  }
+
+  // Remove only unwanted notification-style ads that may be injected later. Our three
+  // classic banner slots are explicitly protected.
+  const guard=`<script id="akhisave-ad-cleaner">(function(){const bad=${BAD_AD.toString()};function clean(){document.querySelectorAll('script,iframe').forEach(function(e){const s=(e.src||'')+' '+(e.textContent||'')+' '+(e.outerHTML||'');if(bad.test(s)&&!e.closest('.ak-ad-place'))e.remove()});document.querySelectorAll('[id],[class]').forEach(function(e){if(e.closest('.ak-ad-place'))return;const s=String((e.id||'')+' '+(e.className||''));if(/(?:monetag|social[-_ ]?bar|profitableratecpmnetwork|adsterra|ad[-_ ]?(?:banner|slot|container)|in[-_ ]?page[-_ ]?push|popunder|vignette)/i.test(s))e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','id','class']})})()</script>`;
   out=out.replace(/<\/body>/i,guard+"</body>");
   return out;
 }
 
-async function cleanResponse(response){
+async function cleanResponse(response,request){
   const type=response.headers.get("content-type")||"";
   if(!type.includes("text/html"))return response;
-  const out=cleanHtml(await response.text());
+  const isAdmin=new URL(request.url).pathname.startsWith("/admin");
+  const out=cleanHtml(await response.text(),isAdmin);
   const headers=new Headers(response.headers);
   headers.delete("content-length");
   headers.delete("content-encoding");
@@ -72,4 +90,4 @@ async function cleanResponse(response){
   return new Response(out,{status:response.status,statusText:response.statusText,headers});
 }
 
-export default{async fetch(request,env,ctx){return cleanResponse(await app.fetch(request,env,ctx))}};
+export default{async fetch(request,env,ctx){return cleanResponse(await app.fetch(request,env,ctx),request)}};
