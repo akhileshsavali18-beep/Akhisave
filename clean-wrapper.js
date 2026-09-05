@@ -1,7 +1,7 @@
 import app from "./worker-wrapper.js";
 
-const LOGO_ONLY="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
-const WORDMARK="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
+const LOGO_ONLY="/Logo.png";
+const WORDMARK="/Name.png";
 const OLD_LOGO="/38364009-f822-430a-9f51-694b12b8d9ef.png";
 const BAD_AD=/(monetag|monetag\.com|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|highrevenueformat|adsterra|googlesyndication|doubleclick|popunder|push-notification|tag\.min\.js|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)/i;
 
