@@ -5,10 +5,10 @@ async function polish(response){
   if(!type.includes("text/html")) return response;
   let html=await response.text();
   html=html.replace(/\s*[·•]\s*Public content only/gi,"");
-  // Remove only the site's original menu controls. Do NOT match the word "menu" inside AkhiSave's own class name.
-  html=html.replace(/<button\b[^>]*class=["'][^"']*(?:^|\s)menu(?:\s|$)[^"']*["'][^>]*>[\s\S]*?<\/button>/gi,"");
-  html=html.replace(/<button\b[^>]*class=["'][^"']*(?:^|\s)menuBtn(?:\s|$)[^"']*["'][^>]*>[\s\S]*?<\/button>/gi,"");
-  html=html.replace(/<div\b[^>]*class=["'][^"']*(?:^|\s)menu(?:\s|$)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
+  // Remove only the site's original menu controls. Inspect the class value directly so
+  // AkhiSave's own class names such as "akhisave-menu-btn" are never removed.
+  html=html.replace(/<button\b[^>]*>[\s\S]*?<\/button>/gi,(block)=>{const m=block.match(/\bclass=["']([^"']*)["']/i);return m&&/(?:^|\s)(?:menu|menuBtn)(?:\s|$)/i.test(m[1])?"":block});
+  html=html.replace(/<div\b[^>]*>[\s\S]*?<\/div>/gi,(block)=>{const m=block.match(/\bclass=["']([^"']*)["']/i);return m&&/(?:^|\s)menu(?:\s|$)/i.test(m[1])?"":block});
   html=html.replace(/(<button\b[^>]*class=["'][^"']*akhisave-menu-btn[^"']*["'][^>]*>[\s\S]*?<\/button>)[\s\S]*(<button\b[^>]*class=["'][^"']*akhisave-menu-btn[^"']*["'][^>]*>[\s\S]*?<\/button>)/i,"$1");
   const isWebsite=/<header\b[^>]*class=["'][^"']*\bnav\b[^"']*["']/i.test(html);
   const isResult=/<div class=["']crumb["'][^>]*id=["']crumb["']/i.test(html);
