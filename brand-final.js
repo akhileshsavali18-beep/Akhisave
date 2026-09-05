@@ -5,6 +5,7 @@ async function polish(response){
   if(!type.includes("text/html")) return response;
   let html=await response.text();
   html=html.replace(/\s*[·•]\s*Public content only/gi,"");
+  html=html.replace(/<button\b[^>]*class=["']menu["'][^>]*>[\s\S]*?<\/button>/gi,"");
   html=html.replace(/(<button\b[^>]*class=["'][^"']*akhisave-menu-btn[^"']*["'][^>]*>[\s\S]*?<\/button>)[\s\S]*?(<button\b[^>]*class=["'][^"']*akhisave-menu-btn[^"']*["'][^>]*>[\s\S]*?<\/button>)/i,"$1");
   const isResult=/<div class=["']crumb["'][^>]*id=["']crumb["']/i.test(html);
   let resultCss="";
