@@ -8,21 +8,15 @@ const BAD_AD=/(monetag|nap5k\.com|profitableratecpmnetwork|highrevenueformat|117
 
 function cleanHtml(html){
   let out=html;
-
-  // Ads are completely disabled for now. Remove every known ad-network script/container.
   out=out.replace(/<script\b[^>]*(?:monetag|nap5k\.com|profitableratecpmnetwork|highrevenueformat|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)[^>]*>[\s\S]*?<\/script>/gi,"");
   out=out.replace(/<iframe\b[^>]*(?:profitableratecpmnetwork|highrevenueformat|monetag|nap5k\.com)[^>]*>[\s\S]*?<\/iframe>/gi,"");
   out=out.replace(/<div\b[^>]*(?:class|id)=["'][^"']*(?:ad-banner|ad-slot|advertisement|social-bar|monetag|adsterra)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
 
-  // Normalize all legacy branding paths to the NEW assets only.
+  // Old logo is replaced by the new combined logo. Split assets are used by role below.
   out=out.replaceAll(OLD_LOGO,COMBINED_LOGO);
   out=out.replaceAll("/akhisave-mark.svg",LOGO_ONLY);
-  out=out.replaceAll(LOGO_ONLY,LOGO_ONLY);
-  out=out.replaceAll(COMBINED_LOGO,COMBINED_LOGO);
-  out=out.replaceAll(WORDMARK,WORDMARK);
 
-  // Role-based logo CSS: combined logo for brand/header, mark-only for icon/login, name-only for footer.
   const css=`<style id="akhisave-brand-and-no-ads">
 .brand img{content:url('${COMBINED_LOGO}')!important;width:170px!important;height:58px!important;object-fit:contain!important;border-radius:0!important}
 .topbar .brand img,.drawerbox .brand img{content:url('${COMBINED_LOGO}')!important}
@@ -32,10 +26,8 @@ function cleanHtml(html){
 </style>`;
   out=out.replace(/<\/head>/i,css+"</head>");
 
-  // Safety guard against any old ad code being injected after page load.
   const guard=`<script id="akhisave-ad-cleaner">(function(){const bad=${BAD_AD.toString()};function clean(){document.querySelectorAll('script,iframe').forEach(function(e){const s=(e.src||'')+' '+(e.textContent||'')+' '+(e.outerHTML||'');if(bad.test(s))e.remove()});document.querySelectorAll('[id],[class]').forEach(function(e){const s=String((e.id||'')+' '+(e.className||''));if(/(?:monetag|social[-_ ]?bar|ad[-_ ]?(?:banner|slot|container))/i.test(s))e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','id','class']})})()</script>`;
   out=out.replace(/<\/body>/i,guard+"</body>");
-
   return out;
 }
 
