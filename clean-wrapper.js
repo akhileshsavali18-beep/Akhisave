@@ -51,6 +51,8 @@ async function cleanResponse(response){
   headers.delete("content-length");headers.delete("content-encoding");
   headers.set("Cache-Control","no-store, no-cache, must-revalidate, max-age=0");headers.set("Pragma","no-cache");
   headers.set("Content-Security-Policy","default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://api.socialkit.dev; media-src 'self' blob: https:; frame-src 'none'; object-src 'none'; child-src 'none'; base-uri 'self'");
+  headers.set("Permissions-Policy","notifications=(), camera=(), microphone=(), geolocation=()");
+  headers.set("X-Content-Type-Options","nosniff");
   return new Response(out,{status:response.status,statusText:response.statusText,headers});
 }
 
