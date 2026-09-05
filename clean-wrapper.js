@@ -1,23 +1,23 @@
 import app from "./worker-wrapper.js";
 
-const LOGO_ONLY="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
+// Branding assets: verified against the current live layout roles.
+const LOGO_ONLY="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
 const COMBINED_LOGO="/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png";
-const WORDMARK="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
+const WORDMARK="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
 const OLD_LOGO="/38364009-f822-430a-9f51-694b12b8d9ef.png";
-const BAD_AD=/(monetag|nap5k\.com|profitableratecpmnetwork|highrevenueformat|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)/i;
+const BAD_AD=/(monetag|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|highrevenueformat|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)/i;
 
 function cleanHtml(html){
   let out=html;
-  out=out.replace(/<script\b[^>]*(?:monetag|nap5k\.com|profitableratecpmnetwork|highrevenueformat|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)[^>]*>[\s\S]*?<\/script>/gi,"");
-  out=out.replace(/<iframe\b[^>]*(?:profitableratecpmnetwork|highrevenueformat|monetag|nap5k\.com)[^>]*>[\s\S]*?<\/iframe>/gi,"");
+  out=out.replace(/<script\b[^>]*(?:monetag|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|highrevenueformat|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)[^>]*>[\s\S]*?<\/script>/gi,"");
+  out=out.replace(/<iframe\b[^>]*(?:profitableratecpmnetwork|highrevenueformat|monetag|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com)[^>]*>[\s\S]*?<\/iframe>/gi,"");
   out=out.replace(/<div\b[^>]*(?:class|id)=["'][^"']*(?:ad-banner|ad-slot|advertisement|social-bar|monetag|adsterra)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
 
-  // Replace the old uploaded logo anywhere it is referenced.
   out=out.replaceAll(OLD_LOGO,COMBINED_LOGO);
   out=out.replaceAll("/akhisave-mark.svg",LOGO_ONLY);
 
-  // Website top bar: use the logo-only and wordmark-only assets separately.
+  // Website top bar: logo-only first, name-only second.
   out=out.replace(/(<a\s+class=["']brand["'][^>]*>\s*)<img\b[^>]*>\s*<strong>[\s\S]*?<\/strong>(\s*<\/a>)/i,
     '$1<img class="brand-logo-only" src="'+LOGO_ONLY+'" alt="AkhiSave logo"><img class="brand-wordmark" src="'+WORDMARK+'" alt="AkhiSave">$2');
 
@@ -47,6 +47,7 @@ async function cleanResponse(response){
   headers.delete("content-encoding");
   headers.set("Cache-Control","no-store, no-cache, must-revalidate, max-age=0");
   headers.set("Pragma","no-cache");
+  headers.set("Content-Security-Policy","default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://api.socialkit.dev; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'");
   return new Response(out,{status:response.status,statusText:response.statusText,headers});
 }
 
