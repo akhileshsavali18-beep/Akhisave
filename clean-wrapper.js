@@ -15,17 +15,25 @@ function cleanHtml(html){
   out=out.replace(/<iframe\b[^>]*(?:monetag|profitableratecpmnetwork|highrevenueformat|adsterra)[^>]*>[\s\S]*?<\/iframe>/gi,"");
   out=out.replace(/<div\b[^>]*(?:class|id)=["'][^"']*(?:ad-banner|ad-slot|advertisement|social-bar|akhisave-ad|monetag|adsterra)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
-  out=out.replaceAll(OLD_LOGO,LOGO_ONLY).replaceAll(OLD_WORDMARK,WORDMARK).replaceAll(OLD_COMBINED,COMBINED_LOGO).replaceAll("/akhisave-mark.svg",LOGO_ONLY);
+
+  // One canonical brand set everywhere. Old assets and legacy SVG marks are never rendered.
+  out=out.replaceAll(OLD_LOGO,LOGO_ONLY)
+    .replaceAll(OLD_WORDMARK,WORDMARK)
+    .replaceAll(OLD_COMBINED,COMBINED_LOGO)
+    .replaceAll("/akhisave-mark.svg",LOGO_ONLY)
+    .replaceAll("/akhisave-icon.svg",LOGO_ONLY)
+    .replaceAll("/akhisave-logo.svg",COMBINED_LOGO);
+
   const isWebsite=/<header[^>]+class=["']nav["']/i.test(out);
+  const isAdmin=/<title>AkhiSave Admin<\/title>/i.test(out);
   const themeCss=`
 :root{--akh-blue:#0068fc;--akh-cyan:#00bffc;--akh-navy:#071426;--akh-text:#122033;--akh-muted:#667386;--akh-line:#e4eaf2;--akh-soft:#f5f8fc}
 html,body{background:#fff!important;color:var(--akh-text)!important}
 body{background-image:none!important;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
 body:before,body:after{display:none!important}
-.nav,header.nav{background:rgba(255,255,255,.96)!important;border-bottom:1px solid var(--akh-line)!important;box-shadow:0 1px 8px rgba(15,35,65,.04)!important;backdrop-filter:blur(12px)!important}
-.navin{max-width:1180px!important;min-height:72px!important}
-.navlinks a{color:#435168!important}
-.navlinks a:hover{color:var(--akh-blue)!important}
+.nav,header.nav{background:rgba(255,255,255,.98)!important;border-bottom:1px solid var(--akh-line)!important;box-shadow:0 1px 8px rgba(15,35,65,.05)!important;backdrop-filter:blur(12px)!important}
+.navin{max-width:1180px!important;min-height:78px!important}
+.navlinks a{color:#435168!important}.navlinks a:hover{color:var(--akh-blue)!important}
 .brand{color:var(--akh-navy)!important}
 .hero{background:transparent!important;box-shadow:none!important;border:0!important}
 .hero h1,.hero h2,.heading h2,.section-title{color:var(--akh-navy)!important;letter-spacing:-.035em!important}
@@ -46,27 +54,33 @@ body:before,body:after{display:none!important}
 .ico,.icon{background:#eef5ff!important;color:var(--akh-blue)!important}
 .badge,.pill{background:#eef5ff!important;color:var(--akh-blue)!important;border-color:#d8e8ff!important}
 .footer,footer{background:#f7f9fc!important;border-top:1px solid var(--akh-line)!important;color:#667386!important}
-.footer a,footer a{color:#526177!important}
-.footer a:hover,footer a:hover{color:var(--akh-blue)!important}
-.seo h2,.seo h3,.faq h3,.feature h3,.step h3{color:var(--akh-navy)!important}
-.seo p,.faq p,.feature p,.step p{color:#667386!important}
-hr{border-color:var(--akh-line)!important}
-::selection{background:#cfe3ff!important;color:var(--akh-navy)!important}
+.footer a,footer a{color:#526177!important}.footer a:hover,footer a:hover{color:var(--akh-blue)!important}
+.seo h2,.seo h3,.faq h3,.feature h3,.step h3{color:var(--akh-navy)!important}.seo p,.faq p,.feature p,.step p{color:#667386!important}
+hr{border-color:var(--akh-line)!important}::selection{background:#cfe3ff!important;color:var(--akh-navy)!important}
 .ad,.akhisave-ad-slot,.akhisave-ad-banner,.akhisave-ad-placeholder,.ad-banner,.ad-slot,.social-bar,[id*="ad-"]{display:none!important}
-@media(max-width:760px){.navin{min-height:68px!important}.hero{padding-top:28px!important}.searchbox,.search-wrap,.input-wrap{border-radius:14px!important}.searchbox button,.search-wrap button,.input-wrap button{min-height:46px!important}}
 `;
+
   if(isWebsite){
-    out=out.replace(/(<a\s+class=["']brand["'][^>]*>)[\s\S]*?(<\/a>)/i,'$1<img class="brand-logo-mark" src="'+LOGO_ONLY+'" alt="AkhiSave logo"><img class="brand-logo-wordmark" src="'+WORDMARK+'" alt="AkhiSave">$2');
-    out=out.replace(/<\/head>/i,`<style id="akhisave-final-ui">${themeCss}.brand{display:flex!important;align-items:center!important;gap:9px!important}.brand-logo-mark{width:52px!important;height:52px!important;object-fit:contain!important;border-radius:0!important}.brand-logo-wordmark{width:136px!important;height:38px!important;object-fit:contain!important;border-radius:0!important}.brand strong,.brand b{display:none!important}</style></head>`);
+    out=out.replace(/<a\s+class=["']brand["'][^>]*>[\s\S]*?<\/a>/i,'<a class="brand" href="/"><img class="brand-logo-full" src="'+COMBINED_LOGO+'" alt="AkhiSave"></a>');
+    const brandCss=`.brand-logo-full{width:190px!important;height:62px!important;object-fit:contain!important;display:block!important;border-radius:0!important}.brand strong,.brand b{display:none!important}@media(max-width:760px){.navin{min-height:70px!important}.brand-logo-full{width:180px!important;height:58px!important}}`;
+    out=out.replace(/<\/head>/i,`<style id="akhisave-final-ui">${themeCss}${brandCss}</style></head>`);
     if(!out.includes('id="akhisaveMenuBtn"')){
       out=out.replace(/(<\/nav>)/i,'$1<button class="akhisave-menu-btn" id="akhisaveMenuBtn" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>');
       const menuScript=`<script id="akhisave-mobile-menu">(function(){function init(){var b=document.getElementById('akhisaveMenuBtn'),nav=document.querySelector('.nav');if(!b||!nav)return;var p=document.getElementById('akhisaveMenuPanel');if(!p){p=document.createElement('div');p.id='akhisaveMenuPanel';p.innerHTML='<a href="#tools">Tools</a><a href="#how">How it works</a><a href="/faq.html">FAQ</a>';nav.appendChild(p)}b.addEventListener('click',function(){var o=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!o));p.classList.toggle('open',!o)});p.addEventListener('click',function(e){if(e.target.tagName==='A'){b.setAttribute('aria-expanded','false');p.classList.remove('open')}})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init()})()</script>`;
       out=out.replace(/<\/body>/i,menuScript+'</body>');
-      out=out.replace(/<\/head>/i,`<style id="akhisave-mobile-menu-css">.akhisave-menu-btn{display:none;width:42px;height:42px;border:1px solid #dce3ed;background:#fff;border-radius:11px;align-items:center;justify-content:center;flex-direction:column;gap:5px;cursor:pointer;padding:0}.akhisave-menu-btn span{display:block;width:19px;height:2px;background:#172033;border-radius:3px}.akhisave-menu-btn[aria-expanded="true"] span:nth-child(2){opacity:0}.akhisave-menu-btn[aria-expanded="true"] span:first-child{transform:translateY(7px) rotate(45deg)}.akhisave-menu-btn[aria-expanded="true"] span:last-child{transform:translateY(-7px) rotate(-45deg)}#akhisaveMenuPanel{display:none}.navin{position:relative}@media(max-width:760px){.navlinks{display:none!important}.akhisave-menu-btn{display:flex!important}#akhisaveMenuPanel{position:absolute;right:12px;top:68px;width:190px;padding:8px;background:#fff;border:1px solid #dfe5ee;border-radius:14px;box-shadow:0 18px 45px rgba(20,30,50,.14);z-index:9999}#akhisaveMenuPanel.open{display:flex;flex-direction:column}#akhisaveMenuPanel a{padding:12px 13px;text-decoration:none;color:#263249;font-size:13px;font-weight:800;border-radius:9px}}</style></head>`);
+      out=out.replace(/<\/head>/i,`<style id="akhisave-mobile-menu-css">.akhisave-menu-btn{display:none;width:44px;height:44px;border:1px solid #dce3ed;background:#fff;border-radius:12px;align-items:center;justify-content:center;flex-direction:column;gap:5px;cursor:pointer;padding:0}.akhisave-menu-btn span{display:block;width:20px;height:2px;background:#172033;border-radius:3px}.akhisave-menu-btn[aria-expanded="true"] span:nth-child(2){opacity:0}.akhisave-menu-btn[aria-expanded="true"] span:first-child{transform:translateY(7px) rotate(45deg)}.akhisave-menu-btn[aria-expanded="true"] span:last-child{transform:translateY(-7px) rotate(-45deg)}#akhisaveMenuPanel{display:none}.navin{position:relative}@media(max-width:760px){.navlinks{display:none!important}.akhisave-menu-btn{display:flex!important}#akhisaveMenuPanel{position:absolute;right:12px;top:70px;width:190px;padding:8px;background:#fff;border:1px solid #dfe5ee;border-radius:14px;box-shadow:0 18px 45px rgba(20,30,50,.14);z-index:9999}#akhisaveMenuPanel.open{display:flex;flex-direction:column}#akhisaveMenuPanel a{padding:12px 13px;text-decoration:none;color:#263249;font-size:13px;font-weight:800;border-radius:9px}}</style></head>`);
     }
+  } else if(isAdmin){
+    const adminCss=`${themeCss}.topbar{background:rgba(255,255,255,.98)!important;border-bottom:1px solid var(--akh-line)!important;box-shadow:0 1px 8px rgba(15,35,65,.05)!important}.topbar .brand-logo-full{width:190px!important;height:62px!important;object-fit:contain!important}.drawer-head .brand{display:none!important}.drawer{background:#fff!important;border-right:1px solid var(--akh-line)!important}.drawer a{color:#526177!important}.drawer a.active,.drawer a:hover{background:#eef5ff!important;color:var(--akh-blue)!important}.iconbtn{background:#fff!important;color:#172033!important;border-color:#dce3ed!important;box-shadow:none!important}.logout{background:#fff!important;color:#263249!important;border-color:#dce3ed!important}.card,.statcard,.section,.statusbox,.loginbox,.feature{background:#fff!important;color:var(--akh-text)!important;border-color:var(--akh-line)!important;box-shadow:0 10px 30px rgba(18,38,68,.06)!important}.muted,.hero p,.toolmeta,.feature p{color:#667386!important}.field input,.field textarea,.field select{background:#fff!important;color:var(--akh-text)!important;border-color:#d8e1ec!important}.bottom{background:#fff!important;border-top:1px solid var(--akh-line)!important}.bottom button{color:#667386!important}.bottom button.active{color:var(--akh-blue)!important}.login-page{background:#fff!important}.loginbox .brand{justify-content:center}.loginbox .brand img{width:220px!important;height:78px!important;object-fit:contain!important}.btn.primary{background:linear-gradient(135deg,var(--akh-blue),var(--akh-cyan))!important}.pill{background:#eef5ff!important;color:var(--akh-blue)!important;border-color:#d8e8ff!important}@media(max-width:560px){.topbar{height:70px}.topin{padding:0 11px}.topbar .brand-logo-full{width:180px!important;height:58px!important}.loginbox .brand img{width:205px!important;height:72px!important}}`;
+    out=out.replace(/<a\s+class=["']brand["'][^>]*>[\s\S]*?<\/a>/gi,'<a class="brand" href="/"><img class="brand-logo-full" src="'+COMBINED_LOGO+'" alt="AkhiSave"></a>');
+    out=out.replace(/<\/head>/i,`<style id="akhisave-admin-brand-ui">${adminCss}</style></head>`);
   } else {
-    out=out.replace(/<\/head>/i,`<style id="akhisave-global-ui">${themeCss}</style></head>`);
+    // SEO/sub-pages: keep a single full logo in their brand area and make the logo clearly visible.
+    out=out.replace(/<a\s+class=["']brand["'][^>]*>[\s\S]*?<\/a>/gi,'<a class="brand" href="/"><img class="brand-logo-full" src="'+COMBINED_LOGO+'" alt="AkhiSave"></a>');
+    const subCss=`${themeCss}.brand-logo-full{width:190px!important;height:62px!important;object-fit:contain!important;display:block!important;border-radius:0!important}.brand span{display:none!important}@media(max-width:760px){.brand-logo-full{width:180px!important;height:58px!important}}`;
+    out=out.replace(/<\/head>/i,`<style id="akhisave-subpage-brand-ui">${subCss}</style></head>`);
   }
+
   const guard=`<script id="akhisave-zero-ads">(function(){const bad=${BAD_AD.toString()};function clean(){document.querySelectorAll('script,iframe,object,embed').forEach(function(e){const s=(e.src||'')+' '+(e.data||'')+' '+(e.textContent||'')+' '+(e.outerHTML||'');if(bad.test(s))e.remove()});document.querySelectorAll('[id],[class]').forEach(function(e){const s=String((e.id||'')+' '+(e.className||''));if(/(?:monetag|social[-_ ]?bar|ad[-_ ]?(?:banner|slot|container)|advertisement|adsterra|akhisave-ad)/i.test(s))e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','data','id','class']})})()</script>`;
   out=out.replace(/<\/body>/i,guard+'</body>');
   return out;
