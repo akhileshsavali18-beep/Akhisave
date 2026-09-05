@@ -15,15 +15,12 @@ const AD_BOTTOM=`<div class="ak-ad-place ak-ad-bottom">${BANNER}</div>`;
 
 function cleanHtml(html){
   let out=html;
-
-  // Remove old notification/push/popunder/native ad injections.
   out=out.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,(block)=>BAD_AD.test(block)?"":block);
   out=out.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi,(block)=>BAD_AD.test(block)?"":block);
   out=out.replace(/<(?:div|section|aside|ins)\b[^>]*(?:class|id|data-[^=]+)=["'][^"']*(?:social-bar|monetag|adsterra|adsbygoogle|container-70d4c0990517d13f426b27f0fcfc6836)[^"']*["'][^>]*>[\s\S]*?<\/(?:div|section|aside|ins)>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/\bADVERTISEMENT\b/gi,"");
 
-  // Keep the current website branding exactly as requested: combined logo + name in the top bar.
   out=out.replaceAll(OLD_LOGO,COMBINED_LOGO);
   out=out.replaceAll("/akhisave-mark.svg",LOGO_ONLY);
   out=out.replace(/(<a\s+class=["']brand["'][^>]*>)[\s\S]*?(<\/a>)/i,
@@ -43,15 +40,15 @@ function cleanHtml(html){
 </style>`;
   out=out.replace(/<\/head>/i,css+"</head>");
 
-  // Exactly three fixed placements: top, middle and bottom.
-  out=out.replace(/(<header[^>]*>)/i,"$1"+AD_TOP);
+  // Exactly three banner placements: after header, after hero/content, and before footer.
+  out=out.replace(/<\/header>/i,"</header>"+AD_TOP);
   const hero=/((?:<section|<div)[^>]*(?:class|id)=["'][^"']*hero[^"']*["'][^>]*>[\s\S]*?<\/(?:section|div)>)/i;
   if(hero.test(out))out=out.replace(hero,"$1"+AD_MIDDLE);
   else out=out.replace(/<main([^>]*)>/i,"<main$1>"+AD_MIDDLE);
   if(/<footer\b/i.test(out))out=out.replace(/<footer\b/i,AD_BOTTOM+"<footer");
   else out=out.replace(/<\/main>/i,AD_BOTTOM+"</main>");
 
-  // Remove any later notification/push/popunder injection, but never remove our ak-ad-place banners.
+  // Block only unwanted notification-style ads added later; keep our three banner placements.
   const guard=`<script id="akhisave-ad-cleaner">(function(){const bad=${BAD_AD.toString()};function clean(){document.querySelectorAll('script,iframe').forEach(function(e){const s=(e.src||'')+' '+(e.textContent||'')+' '+(e.outerHTML||'');if(bad.test(s)&&!e.closest('.ak-ad-place'))e.remove()});document.querySelectorAll('[id],[class]').forEach(function(e){const s=String((e.id||'')+' '+(e.className||''));if(/(?:monetag|social[-_ ]?bar|profitableratecpmnetwork|adsterra|ad[-_ ]?(?:banner|slot|container)|in[-_ ]?page[-_ ]?push|popunder|vignette)/i.test(s)&&!e.closest('.ak-ad-place'))e.remove()})}clean();new MutationObserver(clean).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','id','class']})})()</script>`;
   out=out.replace(/<\/body>/i,guard+"</body>");
   return out;
