@@ -26,19 +26,18 @@ async function applyBranding(response){
   const combined="/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png";
   const icon="/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png";
   const wordmark="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
-  const nativeAd=`<div class="akhisave-ad-native"><script async="async" data-cfasync="false" src="https://pl31187879.profitableratecpmnetwork.com/70d4c0990517d13f426b27f0fcfc6836/invoke.js"></script><div id="container-70d4c0990517d13f426b27f0fcfc6836"></div></div>`;
-  const socialBar=`<script src="https://pl31187881.profitableratecpmnetwork.com/20/75/4e/20754e0404354192e3bcd9768fd82678.js"></script>`;
+  const bannerAd=`<div class="akhisave-ad-banner"><script>atOptions={key:'b5f10b469c2566d06ff288ac7dc9b5b2',format:'iframe',height:250,width:300,params:{}};</script><script src="https://www.highrevenueformat.com/b5f10b469c2566d06ff288ac7dc9b5b2/invoke.js"></script></div>`;
+  const vignette=`<script>(function(s){s.dataset.zone='11727165';s.src='https://nap5k.com/tag.min.js'})(document.documentElement.appendChild(document.createElement('script')))</script>`;
   let out=html.replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png",combined).replaceAll("/akhisave-mark.svg",icon);
-  // Strip any legacy Monetag script that may still exist in cached/static HTML.
-  out=out.replace(/<script[^>]*(?:nap5k\.com|11717101)[^>]*>.*?<\/script>/gis,"");
+  out=out.replace(/<script[^>]*(?:nap5k\.com|11717101|11727439|11727440|11727438|11727460|11727457|11727451|11727445|11727441|11727165)[^>]*>.*?<\/script>/gis,"");
   out=out.replace(/(<link[^>]+rel=[\"'](?:icon|shortcut icon)[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon).replace(/(<link[^>]+rel=[\"']apple-touch-icon[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon);
   out=out.replaceAll("AkhiSave © 2026",`<img class="footer-brand" src="${wordmark}" alt="AkhiSave"> © 2026`);
-  out=out.replace(/<header[^>]*>/i,m=>m+nativeAd);
+  out=out.replace(/<header[^>]*>/i,m=>m+bannerAd);
   const marker=/<div[^>]+class=[\"'][^\"']*ad[^\"']*[\"'][^>]*>.*?<\/div>/is;
-  if(marker.test(out))out=out.replace(marker,nativeAd);
-  else out=out.replace(/<\/main>/i,nativeAd+"</main>");
-  out=out.replace(/<\/body>/i,socialBar+"</body>");
-  const css=`<style id="akhisave-branding-fix">.brand strong,.brand b{display:none!important}.brand img{width:170px!important;height:58px!important;object-fit:contain!important;border-radius:0!important}.topbar .brand:before,.drawerbox .brand:before,#loginView .brand:before{content:none!important;display:none!important;background:none!important;box-shadow:none!important}.loginbox .logo{content:url('${icon}')!important;object-fit:contain!important}.footer-brand{display:inline-block;width:110px;height:24px;object-fit:contain;vertical-align:middle}.akhisave-ad-native{display:flex;justify-content:center;align-items:center;min-height:250px;width:100%;margin:18px auto;overflow:hidden}@media(max-width:600px){.brand img{width:150px!important;height:52px!important}.akhisave-ad-native{min-height:250px;max-width:100%;overflow:hidden}}</style>`;
+  if(marker.test(out))out=out.replace(marker,bannerAd);
+  else out=out.replace(/<\/main>/i,bannerAd+"</main>");
+  out=out.replace(/<\/head>/i,vignette+"</head>");
+  const css=`<style id="akhisave-branding-fix">.brand strong,.brand b{display:none!important}.brand img{width:170px!important;height:58px!important;object-fit:contain!important;border-radius:0!important}.topbar .brand:before,.drawerbox .brand:before,#loginView .brand:before{content:none!important;display:none!important;background:none!important;box-shadow:none!important}.loginbox .logo{content:url('${icon}')!important;object-fit:contain!important}.footer-brand{display:inline-block;width:110px;height:24px;object-fit:contain;vertical-align:middle}.akhisave-ad-banner{display:flex;justify-content:center;align-items:center;min-height:250px;width:100%;margin:18px auto;overflow:hidden}.akhisave-ad-banner iframe{max-width:100%;border:0}@media(max-width:600px){.brand img{width:150px!important;height:52px!important}.akhisave-ad-banner{min-height:250px;max-width:100%;overflow:hidden}}</style>`;
   out=out.replace(/<\/head>/i,css+"</head>");
   const headers=new Headers(response.headers);headers.delete("content-length");headers.delete("content-encoding");
   return new Response(out,{status:response.status,statusText:response.statusText,headers});
