@@ -2,7 +2,10 @@ import app from "./worker-wrapper.js";
 
 const LOGO_ONLY="/Logo.png";
 const WORDMARK="/Name.png";
+const COMBINED_LOGO="/LogoName.png";
 const OLD_LOGO="/38364009-f822-430a-9f51-694b12b8d9ef.png";
+const OLD_WORDMARK="/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png";
+const OLD_COMBINED="/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png";
 const BAD_AD=/(monetag|monetag\.com|nap5k\.com|n6wxm\.com|quge5\.com|al5sm\.com|5gvci\.com|omg10\.com|profitableratecpmnetwork|highrevenueformat|adsterra|googlesyndication|doubleclick|popunder|push-notification|tag\.min\.js|11717101|11727474|11727460|11727457|11727451|11727445|11727441|11727440|11727439|11727438|11727165)/i;
 
 function cleanHtml(html){
@@ -12,7 +15,7 @@ function cleanHtml(html){
   out=out.replace(/<iframe\b[^>]*(?:monetag|profitableratecpmnetwork|highrevenueformat|adsterra)[^>]*>[\s\S]*?<\/iframe>/gi,"");
   out=out.replace(/<div\b[^>]*(?:class|id)=["'][^"']*(?:ad-banner|ad-slot|advertisement|social-bar|akhisave-ad|monetag|adsterra)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
-  out=out.replaceAll(OLD_LOGO,LOGO_ONLY);
+  out=out.replaceAll(OLD_LOGO,LOGO_ONLY).replaceAll(OLD_WORDMARK,WORDMARK).replaceAll(OLD_COMBINED,COMBINED_LOGO).replaceAll("/akhisave-mark.svg",LOGO_ONLY);
   const isWebsite=/<header[^>]+class=["']nav["']/i.test(out);
   const themeCss=`
 :root{--akh-blue:#0068fc;--akh-cyan:#00bffc;--akh-navy:#071426;--akh-text:#122033;--akh-muted:#667386;--akh-line:#e4eaf2;--akh-soft:#f5f8fc}
@@ -20,7 +23,7 @@ html,body{background:#fff!important;color:var(--akh-text)!important}
 body{background-image:none!important;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
 body:before,body:after{display:none!important}
 .nav,header.nav{background:rgba(255,255,255,.96)!important;border-bottom:1px solid var(--akh-line)!important;box-shadow:0 1px 8px rgba(15,35,65,.04)!important;backdrop-filter:blur(12px)!important}
-.navin{max-width:1180px!important;min-height:68px!important}
+.navin{max-width:1180px!important;min-height:72px!important}
 .navlinks a{color:#435168!important}
 .navlinks a:hover{color:var(--akh-blue)!important}
 .brand{color:var(--akh-navy)!important}
@@ -50,16 +53,16 @@ body:before,body:after{display:none!important}
 hr{border-color:var(--akh-line)!important}
 ::selection{background:#cfe3ff!important;color:var(--akh-navy)!important}
 .ad,.akhisave-ad-slot,.akhisave-ad-banner,.akhisave-ad-placeholder,.ad-banner,.ad-slot,.social-bar,[id*="ad-"]{display:none!important}
-@media(max-width:760px){.navin{min-height:62px!important}.hero{padding-top:28px!important}.searchbox,.search-wrap,.input-wrap{border-radius:14px!important}.searchbox button,.search-wrap button,.input-wrap button{min-height:46px!important}}
+@media(max-width:760px){.navin{min-height:68px!important}.hero{padding-top:28px!important}.searchbox,.search-wrap,.input-wrap{border-radius:14px!important}.searchbox button,.search-wrap button,.input-wrap button{min-height:46px!important}}
 `;
   if(isWebsite){
     out=out.replace(/(<a\s+class=["']brand["'][^>]*>)[\s\S]*?(<\/a>)/i,'$1<img class="brand-logo-mark" src="'+LOGO_ONLY+'" alt="AkhiSave logo"><img class="brand-logo-wordmark" src="'+WORDMARK+'" alt="AkhiSave">$2');
-    out=out.replace(/<\/head>/i,`<style id="akhisave-final-ui">${themeCss}.brand{display:flex!important;align-items:center!important;gap:7px!important}.brand-logo-mark{width:42px!important;height:42px!important;object-fit:contain!important;border-radius:0!important}.brand-logo-wordmark{width:108px!important;height:30px!important;object-fit:contain!important;border-radius:0!important}.brand strong,.brand b{display:none!important}</style></head>`);
+    out=out.replace(/<\/head>/i,`<style id="akhisave-final-ui">${themeCss}.brand{display:flex!important;align-items:center!important;gap:9px!important}.brand-logo-mark{width:52px!important;height:52px!important;object-fit:contain!important;border-radius:0!important}.brand-logo-wordmark{width:136px!important;height:38px!important;object-fit:contain!important;border-radius:0!important}.brand strong,.brand b{display:none!important}</style></head>`);
     if(!out.includes('id="akhisaveMenuBtn"')){
       out=out.replace(/(<\/nav>)/i,'$1<button class="akhisave-menu-btn" id="akhisaveMenuBtn" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>');
       const menuScript=`<script id="akhisave-mobile-menu">(function(){function init(){var b=document.getElementById('akhisaveMenuBtn'),nav=document.querySelector('.nav');if(!b||!nav)return;var p=document.getElementById('akhisaveMenuPanel');if(!p){p=document.createElement('div');p.id='akhisaveMenuPanel';p.innerHTML='<a href="#tools">Tools</a><a href="#how">How it works</a><a href="/faq.html">FAQ</a>';nav.appendChild(p)}b.addEventListener('click',function(){var o=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!o));p.classList.toggle('open',!o)});p.addEventListener('click',function(e){if(e.target.tagName==='A'){b.setAttribute('aria-expanded','false');p.classList.remove('open')}})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init()})()</script>`;
       out=out.replace(/<\/body>/i,menuScript+'</body>');
-      out=out.replace(/<\/head>/i,`<style id="akhisave-mobile-menu-css">.akhisave-menu-btn{display:none;width:42px;height:42px;border:1px solid #dce3ed;background:#fff;border-radius:11px;align-items:center;justify-content:center;flex-direction:column;gap:5px;cursor:pointer;padding:0}.akhisave-menu-btn span{display:block;width:19px;height:2px;background:#172033;border-radius:3px}.akhisave-menu-btn[aria-expanded="true"] span:nth-child(2){opacity:0}.akhisave-menu-btn[aria-expanded="true"] span:first-child{transform:translateY(7px) rotate(45deg)}.akhisave-menu-btn[aria-expanded="true"] span:last-child{transform:translateY(-7px) rotate(-45deg)}#akhisaveMenuPanel{display:none}.navin{position:relative}@media(max-width:760px){.navlinks{display:none!important}.akhisave-menu-btn{display:flex!important}#akhisaveMenuPanel{position:absolute;right:12px;top:62px;width:190px;padding:8px;background:#fff;border:1px solid #dfe5ee;border-radius:14px;box-shadow:0 18px 45px rgba(20,30,50,.14);z-index:9999}#akhisaveMenuPanel.open{display:flex;flex-direction:column}#akhisaveMenuPanel a{padding:12px 13px;text-decoration:none;color:#263249;font-size:13px;font-weight:800;border-radius:9px}}</style></head>`);
+      out=out.replace(/<\/head>/i,`<style id="akhisave-mobile-menu-css">.akhisave-menu-btn{display:none;width:42px;height:42px;border:1px solid #dce3ed;background:#fff;border-radius:11px;align-items:center;justify-content:center;flex-direction:column;gap:5px;cursor:pointer;padding:0}.akhisave-menu-btn span{display:block;width:19px;height:2px;background:#172033;border-radius:3px}.akhisave-menu-btn[aria-expanded="true"] span:nth-child(2){opacity:0}.akhisave-menu-btn[aria-expanded="true"] span:first-child{transform:translateY(7px) rotate(45deg)}.akhisave-menu-btn[aria-expanded="true"] span:last-child{transform:translateY(-7px) rotate(-45deg)}#akhisaveMenuPanel{display:none}.navin{position:relative}@media(max-width:760px){.navlinks{display:none!important}.akhisave-menu-btn{display:flex!important}#akhisaveMenuPanel{position:absolute;right:12px;top:68px;width:190px;padding:8px;background:#fff;border:1px solid #dfe5ee;border-radius:14px;box-shadow:0 18px 45px rgba(20,30,50,.14);z-index:9999}#akhisaveMenuPanel.open{display:flex;flex-direction:column}#akhisaveMenuPanel a{padding:12px 13px;text-decoration:none;color:#263249;font-size:13px;font-weight:800;border-radius:9px}}</style></head>`);
     }
   } else {
     out=out.replace(/<\/head>/i,`<style id="akhisave-global-ui">${themeCss}</style></head>`);
