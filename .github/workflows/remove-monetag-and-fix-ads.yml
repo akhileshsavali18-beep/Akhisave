@@ -1,0 +1,41 @@
+name: Remove old Monetag ads
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove old Monetag and keep new ads
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for name in ['index.html','result.html']:
+              p=Path(name)
+              s=p.read_text(encoding='utf-8')
+              s=re.sub(r'<script[^>]*nap5k\\.com[^>]*>.*?</script>', '', s, flags=re.I|re.S)
+              s=re.sub(r'<script[^>]*11717101[^>]*>.*?</script>', '', s, flags=re.I|re.S)
+              p.write_text(s, encoding='utf-8')
+          p=Path('worker-wrapper.js')
+          s=p.read_text(encoding='utf-8')
+          marker='let out=html.replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png",combined).replaceAll("/akhisave-mark.svg",icon);'
+          if marker in s and 'strip any legacy Monetag' not in s:
+              s=s.replace(marker, marker+'\n  // Strip any legacy Monetag script that may still exist in cached/static HTML.\n  out=out.replace(/<script[^>]*(?:nap5k\\.com|11717101)[^>]*>.*?<\\/script>/gis,"");')
+          p.write_text(s, encoding='utf-8')
+          PY
+          node --check worker-wrapper.js
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add index.html result.html worker-wrapper.js
+          git diff --cached --quiet || git commit -m "Remove legacy Monetag ads"
+          git push
+      - name: Remove temporary workflow
+        run: |
+          rm -f .github/workflows/remove-monetag-and-fix-ads.yml
+          git add .github/workflows/remove-monetag-and-fix-ads.yml
+          git diff --cached --quiet || git commit -m "Remove temporary ad fix workflow"
+          git push
