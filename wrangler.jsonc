@@ -1,6 +1,6 @@
 {
   "name": "akhisave",
-  "main": "clean-wrapper.js",
+  "main": "brand-final.js",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": ".",
