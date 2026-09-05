@@ -16,7 +16,6 @@ function cleanHtml(html){
   out=out.replace(/<div\b[^>]*(?:class|id)=["'][^"']*(?:ad-banner|ad-slot|advertisement|social-bar|akhisave-ad|monetag|adsterra)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,"");
   out=out.replace(/<div\s+class=["']ad["'][^>]*>[\s\S]*?<\/div>/gi,"");
 
-  // One canonical brand set everywhere. Old assets and legacy SVG marks are never rendered.
   out=out.replaceAll(OLD_LOGO,LOGO_ONLY)
     .replaceAll(OLD_WORDMARK,WORDMARK)
     .replaceAll(OLD_COMBINED,COMBINED_LOGO)
@@ -75,9 +74,22 @@ hr{border-color:var(--akh-line)!important}::selection{background:#cfe3ff!importa
     out=out.replace(/<a\s+class=["']brand["'][^>]*>[\s\S]*?<\/a>/gi,'<a class="brand" href="/"><img class="brand-logo-full" src="'+COMBINED_LOGO+'" alt="AkhiSave"></a>');
     out=out.replace(/<\/head>/i,`<style id="akhisave-admin-brand-ui">${adminCss}</style></head>`);
   } else {
-    // SEO/sub-pages: keep a single full logo in their brand area and make the logo clearly visible.
     out=out.replace(/<a\s+class=["']brand["'][^>]*>[\s\S]*?<\/a>/gi,'<a class="brand" href="/"><img class="brand-logo-full" src="'+COMBINED_LOGO+'" alt="AkhiSave"></a>');
-    const subCss=`${themeCss}.brand-logo-full{width:190px!important;height:62px!important;object-fit:contain!important;display:block!important;border-radius:0!important}.brand span{display:none!important}@media(max-width:760px){.brand-logo-full{width:180px!important;height:58px!important}}`;
+    const subCss=`${themeCss}
+header:not(.nav){background:rgba(255,255,255,.98)!important;color:var(--akh-navy)!important;border-bottom:1px solid var(--akh-line)!important;box-shadow:0 1px 8px rgba(15,35,65,.05)!important;backdrop-filter:blur(12px)!important}
+header:not(.nav) .headin{max-width:1180px!important;min-height:74px!important;width:100%!important;margin:0 auto!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;padding:0 22px!important}
+header:not(.nav) .brand{display:flex!important;align-items:center!important;gap:0!important;text-decoration:none!important}
+.brand-logo-full{width:190px!important;height:62px!important;object-fit:contain!important;display:block!important;border-radius:0!important}
+.brand span,.brand strong,.brand b{display:none!important}
+main{background:transparent!important}
+main .card,.card{background:#fff!important;color:var(--akh-text)!important;border-color:var(--akh-line)!important;box-shadow:0 10px 30px rgba(18,38,68,.06)!important}
+main h1,main h2,main h3{color:var(--akh-navy)!important}
+main p,main li{color:var(--akh-muted)!important}
+.notice{background:#f5f8fc!important;color:var(--akh-text)!important;border-color:var(--akh-line)!important}
+.notice strong{color:var(--akh-navy)!important}
+.back{color:var(--akh-blue)!important}
+@media(max-width:760px){header:not(.nav) .headin{min-height:70px!important;padding:0 13px!important}.brand-logo-full{width:180px!important;height:58px!important}}
+`;
     out=out.replace(/<\/head>/i,`<style id="akhisave-subpage-brand-ui">${subCss}</style></head>`);
   }
 
