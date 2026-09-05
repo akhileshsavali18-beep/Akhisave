@@ -29,6 +29,8 @@ async function applyBranding(response){
   const nativeAd=`<div class="akhisave-ad-native"><script async="async" data-cfasync="false" src="https://pl31187879.profitableratecpmnetwork.com/70d4c0990517d13f426b27f0fcfc6836/invoke.js"></script><div id="container-70d4c0990517d13f426b27f0fcfc6836"></div></div>`;
   const socialBar=`<script src="https://pl31187881.profitableratecpmnetwork.com/20/75/4e/20754e0404354192e3bcd9768fd82678.js"></script>`;
   let out=html.replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png",combined).replaceAll("/akhisave-mark.svg",icon);
+  // Strip any legacy Monetag script that may still exist in cached/static HTML.
+  out=out.replace(/<script[^>]*(?:nap5k\.com|11717101)[^>]*>.*?<\/script>/gis,"");
   out=out.replace(/(<link[^>]+rel=[\"'](?:icon|shortcut icon)[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon).replace(/(<link[^>]+rel=[\"']apple-touch-icon[\"'][^>]+href=[\"'])[^\"']+/i,"$1"+icon);
   out=out.replaceAll("AkhiSave © 2026",`<img class="footer-brand" src="${wordmark}" alt="AkhiSave"> © 2026`);
   out=out.replace(/<header[^>]*>/i,m=>m+nativeAd);
