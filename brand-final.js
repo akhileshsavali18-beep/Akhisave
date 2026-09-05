@@ -78,4 +78,5 @@ ${resultCss}
   return new Response(html,{status:response.status,statusText:response.statusText,headers});
 }
 
-export default{async fetch(request,env,ctx){return polish(await base.fetch(request,env,ctx)}};
+const worker={async fetch(request,env,ctx){return polish(await base.fetch(request,env,ctx));}};
+export default worker;
