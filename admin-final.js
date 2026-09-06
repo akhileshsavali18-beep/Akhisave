@@ -12,7 +12,6 @@ html,body{background:#fff!important;color:#0a1628!important}
 .row,.toolrow,.aks-row{border-bottom-color:#e4eaf2!important}.statusbox,.custom-editor,.empty,.atm-tool,.atm-stat,.atm-empty{background:#f7faff!important;color:#0a1628!important;border-color:#e4eaf2!important}.toolicon,.atm-icon{background:#edf5ff!important;border-color:#d8e8fb!important}
 .drawer{background:#fff!important;border-right-color:#e4eaf2!important}.drawer-head{border-bottom-color:#e4eaf2!important}.drawer a{color:#68778b!important}.drawer a.active,.drawer a:hover{background:#edf5ff!important;color:#1677ff!important}.bottom{background:#fff!important;border-top-color:#e4eaf2!important}.bottom button{color:#68778b!important}.bottom button.active{color:#1677ff!important}
 .login-page{background:#fff!important}.loginbox{background:#fff!important;color:#0a1628!important;border-color:#e4eaf2!important;box-shadow:0 20px 60px rgba(18,38,68,.08)!important}.loginbox p{color:#68778b!important}.toast{background:#fff!important;color:#0a1628!important;border-color:#d8e1ec!important}
-/* Force the old full-screen drawer overlay completely out of the tap layer. */
 #drawerOverlay{display:none!important;pointer-events:none!important;z-index:-1!important}
 #drawerOverlay.show{display:none!important;pointer-events:none!important}
 #drawer:not(.open){pointer-events:none!important}
@@ -23,11 +22,9 @@ html,body{background:#fff!important;color:#0a1628!important}
 
 const TAP_FIX = `<script>(function(){
 function fixAdminTaps(){
-  const $=id=>document.getElementById(id);
-  const drawer=$('drawer'), overlay=$('drawerOverlay');
-  if(!drawer)return;
+  const $=id=>document.getElementById(id);const drawer=$('drawer'),overlay=$('drawerOverlay');if(!drawer)return;
   if(overlay){overlay.style.display='none';overlay.style.pointerEvents='none';overlay.style.zIndex='-1';}
-  const open=$('openDrawer'), close=$('closeDrawer'), refresh=$('refresh'), logout=$('logout');
+  const open=$('openDrawer'),close=$('closeDrawer'),refresh=$('refresh'),logout=$('logout');
   if(open)open.onclick=function(e){e.preventDefault();e.stopPropagation();drawer.classList.add('open');};
   if(close)close.onclick=function(e){e.preventDefault();e.stopPropagation();drawer.classList.remove('open');};
   if(refresh)refresh.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof window.loadAll==='function')window.loadAll();else location.reload();};
@@ -38,32 +35,15 @@ function fixAdminTaps(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fixAdminTaps);else fixAdminTaps();
 })();</script>`;
 
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-
-    if (request.method === "POST" && url.pathname === "/api/admin/login") {
-      return worker.fetch(request, env, ctx);
-    }
-
-    const response = await suite.fetch(request, env, ctx);
-    if (request.method !== "GET" || (url.pathname !== "/admin.html" && url.pathname !== "/admin")) return response;
-
-    const type = response.headers.get("content-type") || "";
-    if (!type.includes("text/html")) return response;
-    let html = await response.text();
-
-    html = html
-      .replaceAll("/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png", "/LogoName.png")
-      .replaceAll("/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png", "/LogoName.png")
-      .replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png", "/Logo.png")
-      .replaceAll("/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png", "/Name.png");
-    html = html.replace("</head>", LIGHT_ADMIN + "</head>");
-    html = html.replace("</body>", TAP_FIX + '<script src="/admin-login-fix.js?v=4"></script></body>');
-
-    const headers = new Headers(response.headers);
-    headers.delete("content-length");
-    headers.set("Cache-Control", "no-store");
-    return new Response(html, {status:response.status, headers});
-  }
-};
+export default {async fetch(request,env,ctx){
+  const url=new URL(request.url);
+  if(request.method==='POST'&&url.pathname==='/api/admin/login')return worker.fetch(request,env,ctx);
+  const response=await suite.fetch(request,env,ctx);
+  if(request.method!=='GET'||(url.pathname!=='/admin.html'&&url.pathname!=='/admin'))return response;
+  const type=response.headers.get('content-type')||'';if(!type.includes('text/html'))return response;
+  let html=await response.text();
+  html=html.replaceAll('/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png','/LogoName.png').replaceAll('/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png','/LogoName.png').replaceAll('/38364009-f822-430a-9f51-694b12b8d9ef.png','/Logo.png').replaceAll('/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png','/Name.png');
+  html=html.replace('</head>',LIGHT_ADMIN+'</head>');
+  html=html.replace('</body>',TAP_FIX+'<script src="/admin-login-fix.js?v=4"></script><script src="/admin-ui-fix.js?v=1"></script></body>');
+  const headers=new Headers(response.headers);headers.delete('content-length');headers.set('Cache-Control','no-store');return new Response(html,{status:response.status,headers});
+}};
