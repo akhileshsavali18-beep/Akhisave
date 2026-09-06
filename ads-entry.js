@@ -51,7 +51,7 @@ function injectAds(html, ads, path) {
   for (const [name, ad] of [["adsterra", ads.adsterra], ["monetag", ads.monetag]]) {
     if (!allowedFor(ad, type)) continue;
     const code = ad.code || (name === "monetag" && ad.zone ? `<script>(function(s){s.dataset.zone='${ad.zone}';s.src='https://nap5k.com/tag.min.js'})(document.documentElement.appendChild(document.createElement('script')))</script>` : "");
-    const chunk = wrap(code, name);
+    const chunk = ad.placement === "head" ? code : wrap(code, name);
     if (!chunk) continue;
     if (ad.placement === "head") parts.head += chunk;
     else if (ad.placement === "body-start") parts.start += chunk;
