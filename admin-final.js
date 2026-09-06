@@ -18,6 +18,7 @@ html,body{background:#fff!important;color:#0a1628!important}
 #drawer.open{pointer-events:auto!important;z-index:1000!important}
 .bottom,.bottomin,.bottom button{pointer-events:auto!important;z-index:900!important}
 .topbar,.topin,.top-left,.top-right,.iconbtn,.logout{pointer-events:auto!important}
+@media(max-width:560px){#drawer.open{width:100vw!important;max-width:none!important;z-index:2000!important}.topbar{z-index:100!important}}
 </style>`;
 
 const TAP_FIX = `<script>(function(){
