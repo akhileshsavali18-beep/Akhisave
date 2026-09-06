@@ -23,24 +23,33 @@ html,body{background:#fff!important;color:#0a1628!important}
 
 const TAP_FIX = `<script>(function(){
 function fixAdminTaps(){
-  const $=id=>document.getElementById(id);const drawer=$('drawer'),overlay=$('drawerOverlay'),topbar=document.querySelector('.topbar'),bottom=document.querySelector('.bottom');if(!drawer)return;
-  if(overlay){overlay.style.display='none';overlay.style.pointerEvents='none';overlay.style.zIndex='-1';}
-  const open=$('openDrawer'),close=$('closeDrawer'),refresh=$('refresh'),logout=$('logout');
-  function setDrawer(opened){drawer.classList.toggle('open',opened);if(topbar)topbar.style.display=opened?'none':'';if(bottom)bottom.style.display=opened?'none':'';}
+  const $=id=>document.getElementById(id);const drawer=$("drawer"),overlay=$("drawerOverlay"),topbar=document.querySelector(".topbar"),bottom=document.querySelector(".bottom");if(!drawer)return;
+  if(overlay){overlay.style.display="none";overlay.style.pointerEvents="none";overlay.style.zIndex="-1";}
+  const open=$("openDrawer"),close=$("closeDrawer"),refresh=$("refresh"),logout=$("logout");
+  function setDrawer(opened){drawer.classList.toggle("open",opened);if(topbar)topbar.style.display=opened?"none":"";if(bottom)bottom.style.display=opened?"none":"";}
   if(open)open.onclick=function(e){e.preventDefault();e.stopPropagation();setDrawer(true);};
   if(close)close.onclick=function(e){e.preventDefault();e.stopPropagation();setDrawer(false);};
-  if(refresh)refresh.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof window.loadAll==='function')window.loadAll();else location.reload();};
-  if(logout)logout.onclick=async function(e){e.preventDefault();e.stopPropagation();try{await fetch('/api/admin/logout',{method:'POST',credentials:'same-origin'});}finally{location.reload();}};
-  document.querySelectorAll('.bottom-btn').forEach(function(btn){btn.onclick=function(e){e.preventDefault();e.stopPropagation();const tab=btn.dataset.tab;if(typeof window.go==='function')window.go(tab);else{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id===tab));document.querySelectorAll('.bottom-btn').forEach(x=>x.classList.toggle('active',x===btn));}};});
-  document.querySelectorAll('.navlink[data-tab]').forEach(function(a){a.onclick=function(e){e.preventDefault();e.stopPropagation();const tab=a.dataset.tab;setDrawer(false);document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id===tab));document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));history.replaceState(null,'','#'+tab);};});
+  if(refresh)refresh.onclick=function(e){e.preventDefault();e.stopPropagation();if(typeof window.loadAll==="function")window.loadAll();else location.reload();};
+  if(logout)logout.onclick=async function(e){e.preventDefault();e.stopPropagation();try{await fetch("/api/admin/logout",{method:"POST",credentials:"same-origin"});}finally{location.reload();}};
+  document.querySelectorAll(".bottom-btn").forEach(function(btn){btn.onclick=function(e){e.preventDefault();e.stopPropagation();const tab=btn.dataset.tab;if(typeof window.go==="function")window.go(tab);else{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.id===tab));document.querySelectorAll(".bottom-btn").forEach(x=>x.classList.toggle("active",x===btn));}};});
+  document.querySelectorAll(".navlink[data-tab]").forEach(function(a){a.onclick=function(e){e.preventDefault();e.stopPropagation();const tab=a.dataset.tab;setDrawer(false);document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.id===tab));document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===tab));history.replaceState(null,"","#"+tab);};});
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fixAdminTaps);else fixAdminTaps();
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",fixAdminTaps);else fixAdminTaps();
 })();</script>`;
 
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
   if(request.method==='POST'&&url.pathname==='/api/admin/login')return worker.fetch(request,env,ctx);
   const response=await suite.fetch(request,env,ctx);
+  if(request.method==='GET'&&url.pathname==='/' ){
+    const type=response.headers.get('content-type')||'';
+    if(type.includes('text/html')){
+      let html=await response.text();
+      html=html.replace('</head>','<script src="/public-tools.js?v=1"></script></head>');
+      const headers=new Headers(response.headers);headers.delete('content-length');headers.set('Cache-Control','no-store');
+      return new Response(html,{status:response.status,headers});
+    }
+  }
   if(request.method!=='GET'||(url.pathname!=='/admin.html'&&url.pathname!=='/admin'))return response;
   const type=response.headers.get('content-type')||'';if(!type.includes('text/html'))return response;
   let html=await response.text();
