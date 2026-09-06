@@ -1,54 +1,12 @@
 (function(){
-  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-  function num(v){return typeof v==='number'&&Number.isFinite(v)?v:null}
-  function pick(o,keys){for(const k of keys){const n=num(o&&o[k]);if(n!==null)return n}return null}
-  function totalize(data,keys){
-    const direct=pick(data,keys);if(direct!==null)return direct;
-    for(const k of ['totals','summary','total','analytics']){if(data&&data[k]&&typeof data[k]==='object'){const n=pick(data[k],keys);if(n!==null)return n}}
-    return null;
-  }
-  function rowsFrom(data){
-    const candidates=[data?.days,data?.daily,data?.data,data?.records];
-    for(const a of candidates)if(Array.isArray(a))return a;
-    return [];
-  }
-  function render(data,days){
-    const card=document.querySelector('[data-panel="dashboard"]');if(!card)return;
-    const values=[
-      ['PAGE VIEWS',totalize(data,['pageViews','page_views','views'])],
-      ['VISITORS',totalize(data,['visitors','uniqueVisitors','unique_visitors'])],
-      ['DOWNLOADS',totalize(data,['downloads','download_success','successes'])],
-      ['ATTEMPTS',totalize(data,['attempts','download_attempts'])],
-      ['FAILURES',totalize(data,['failures','download_failures'])]
-    ];
-    let grid=card.querySelector('.adh-grid');
-    if(!grid){grid=document.createElement('div');grid.className='adh-grid';const note=card.querySelector('#aksDashNote');card.insertBefore(grid,note||null)}
-    grid.innerHTML=values.map(x=>'<div class="aks-stat"><span>'+x[0]+'</span><b>'+(x[1]===null?'—':x[1].toLocaleString())+'</b></div>').join('');
-    let tools=data?.tools||data?.topTools||data?.top_tools||data?.toolUsage||data?.tool_usage;
-    if(tools&&typeof tools==='object'&&!Array.isArray(tools))tools=Object.entries(tools).map(([name,count])=>({name,count}));
-    if(Array.isArray(tools)&&tools.length){
-      let box=card.querySelector('.adh-tools');if(!box){box=document.createElement('div');box.className='adh-tools';card.appendChild(box)}
-      const top=tools.map(x=>({name:x.name||x.tool||x.id||'Unknown',count:num(x.count??x.downloads??x.uses)??0})).sort((a,b)=>b.count-a.count).slice(0,8);
-      box.innerHTML='<div class="adh-title">TOP TOOLS</div>'+top.map(x=>'<div class="aks-row"><div><b>'+esc(x.name)+'</b></div><span>'+x.count.toLocaleString()+'</span></div>').join('');
-    }
-    const rows=rowsFrom(data);
-    let table=card.querySelector('.adh-daily');
-    if(rows.length){
-      if(!table){table=document.createElement('div');table.className='adh-daily';card.appendChild(table)}
-      const recent=rows.slice(-days).reverse();
-      table.innerHTML='<div class="adh-title">DAILY BREAKDOWN</div><table class="aks-table"><thead><tr><th>DATE</th><th>VIEWS</th><th>DOWNLOADS</th><th>FAILURES</th></tr></thead><tbody>'+recent.map(r=>'<tr><td>'+esc(r.date||r.day||r.key||'—')+'</td><td>'+pick(r,['pageViews','page_views','views'])??'—'+'</td><td>'+pick(r,['downloads','download_success','successes'])??'—'+'</td><td>'+pick(r,['failures','download_failures'])??'—'+'</td></tr>').join('')+'</tbody></table>';
-    }
-    const note=card.querySelector('#aksDashNote');if(note)note.textContent='Analytics: last '+days+' days. Data comes directly from the existing tracking API.';
-  }
-  async function load(days){
-    const card=document.querySelector('[data-panel="dashboard"]');if(!card)return;
-    let data;try{const r=await fetch('/api/admin/analytics?days='+days,{credentials:'same-origin',cache:'no-store'});data=await r.json();if(!r.ok||data.success===false)throw Error(data.error||'Analytics unavailable');render(data,days)}catch(e){const n=card.querySelector('#aksDashNote');if(n)n.textContent='Analytics unavailable: '+e.message}
-  }
-  function init(){
-    const card=document.querySelector('[data-panel="dashboard"]');if(!card||card.dataset.dashboardFix==='1')return;card.dataset.dashboardFix='1';
-    const style=document.createElement('style');style.textContent='.adh-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}.adh-title{font-size:9px;font-weight:900;color:#66758a;margin:14px 0 6px}.adh-tools,.adh-daily{margin-top:4px}@media(max-width:700px){.adh-grid{grid-template-columns:repeat(2,1fr)}}';document.head.appendChild(style);
-    const old=card.querySelector('#aksDashRefresh');if(old)old.onclick=function(){load(7)};
-    let range=document.createElement('div');range.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:10px';range.innerHTML='<button class="aks-btn alt" data-days="7">7 Days</button><button class="aks-btn alt" data-days="14">14 Days</button><button class="aks-btn alt" data-days="30">30 Days</button>';card.querySelector('.aks-head').appendChild(range);range.querySelectorAll('button').forEach(b=>b.onclick=()=>load(Number(b.dataset.days)));load(7);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,50));else setTimeout(init,50);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const n=v=>typeof v==='number'&&Number.isFinite(v)?v:0;
+const pick=(o,keys)=>{for(const k of keys)if(typeof o?.[k]==='number')return o[k];return 0};
+const arr=d=>{for(const k of ['daily','days','data','records','series'])if(Array.isArray(d?.[k]))return d[k];return[]};
+function init(){const card=document.querySelector('[data-panel="dashboard"]');if(!card||card.dataset.dashboardPro)return;card.dataset.dashboardPro='1';
+const st=document.createElement('style');st.textContent='.akdp{display:grid;gap:12px}.akdp-card{background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:16px}.akdp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.akdp-title{font-size:17px;font-weight:800;color:#10233f}.akdp-sub{font-size:10px;color:#718096;margin-top:3px}.akdp-filter{display:flex;gap:6px;flex-wrap:wrap}.akdp-filter button{border:1px solid #dfe6ef;background:#f7faff;color:#53657d;border-radius:9px;padding:7px 10px;font-size:10px;font-weight:800}.akdp-filter button.active{background:#1769e0;color:#fff}.akdp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.akdp-stat{background:#f7faff;border:1px solid #e8eef8;border-radius:13px;padding:12px}.akdp-stat span{display:block;font-size:9px;color:#718096;font-weight:800}.akdp-stat b{display:block;margin-top:5px;font-size:20px;color:#123c7a}.akdp-two{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}.akdp-chart{height:150px;display:flex;align-items:flex-end;gap:5px;margin-top:14px;border-bottom:1px solid #e5ebf3}.akdp-col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}.akdp-col i{width:100%;max-width:22px;background:#1769e0;border-radius:5px 5px 0 0;min-height:2px}.akdp-col small{font-size:7px;color:#7a8798;margin-top:4px;max-width:100%;overflow:hidden;white-space:nowrap}.akdp-list{display:grid;gap:7px;margin-top:10px}.akdp-row{padding:9px 0;border-bottom:1px solid #edf1f6;display:grid;grid-template-columns:1fr auto;gap:10px}.akdp-row:last-child{border-bottom:0}.akdp-bar{height:6px;background:#e9eef6;border-radius:99px;margin-top:5px;overflow:hidden}.akdp-bar i{display:block;height:100%;background:#1769e0}.akdp-status{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.akdp-pill{padding:10px;border:1px solid #e8edf5;border-radius:11px;background:#f7faff;font-size:9px;font-weight:800}.akdp-ok{color:#16864a}@media(max-width:700px){.akdp-grid{grid-template-columns:1fr 1fr}.akdp-two{grid-template-columns:1fr}.akdp-status{grid-template-columns:1fr 1fr}}';document.head.appendChild(st);
+let days=7;
+async function load(){card.innerHTML='<div class="akdp-card">Loading dashboard…</div>';try{const [d,t]=await Promise.all([fetch('/api/admin/analytics?days='+days,{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),fetch('/api/admin/tools',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json())]);if(d.success===false)throw Error(d.error||'Analytics unavailable');const ts=t.tools||[];const visitors=pick(d,['visitors','uniqueVisitors','unique_visitors']);const views=pick(d,['pageViews','page_views','views']);const attempts=pick(d,['attempts','download_attempts']);const downloads=pick(d,['downloads','download_success','successes']);const failures=pick(d,['failures','download_failures']);const files=pick(d,['filesProcessed','files_processed','processed']);const tools=d.tools&&typeof d.tools==='object'&&!Array.isArray(d.tools)?Object.entries(d.tools).map(([name,count])=>({name,count:n(count)})):Array.isArray(d.tools)?d.tools:[];const top=tools.map(x=>({name:x.name||x.tool||x.id||'Unknown',count:n(x.count??x.uses??x.downloads)})).sort((a,b)=>b.count-a.count).slice(0,8);const totalUses=top.reduce((a,x)=>a+x.count,0)||attempts;const success=attempts?downloads/attempts*100:null;const rows=arr(d).slice(-14);const vals=rows.map(x=>pick(x,['pageViews','page_views','views','visitors','downloads','toolUses','uses']));const max=Math.max(1,...vals);card.innerHTML=`<div class="akdp"><div class="akdp-card"><div class="akdp-head"><div><div class="akdp-title">AkhiSave Dashboard</div><div class="akdp-sub">Website-wide activity across all tool categories</div></div><div class="akdp-filter">${[1,7,30].map(x=>`<button class="${x===days?'active':''}" data-days="${x}">${x===1?'Today':x+' Days'}</button>`).join('')}</div></div></div><div class="akdp-grid"><div class="akdp-stat"><span>VISITORS</span><b>${visitors.toLocaleString()}</b></div><div class="akdp-stat"><span>TOOL USES</span><b>${totalUses.toLocaleString()}</b></div><div class="akdp-stat"><span>FILES PROCESSED</span><b>${files?files.toLocaleString():'—'}</b></div><div class="akdp-stat"><span>ERRORS</span><b>${failures.toLocaleString()}</b></div></div><div class="akdp-two"><div class="akdp-card"><div class="akdp-title">📈 Traffic & Usage</div><div class="akdp-sub">Recorded analytics for the selected period</div><div class="akdp-chart">${rows.length?rows.map((x,i)=>`<div class="akdp-col"><i style="height:${Math.max(2,vals[i]/max*100)}%"></i><small>${esc(x.date||x.day||x.label||'')}</small></div>`).join(''):'<div class="akdp-sub" style="margin:auto">No daily analytics recorded yet.</div>'}</div></div><div class="akdp-card"><div class="akdp-title">⚡ Success Rate</div><div style="font-size:30px;font-weight:900;color:#123c7a;margin-top:14px">${success===null?'—':success.toFixed(1)+'%'}</div><div class="akdp-sub">${attempts.toLocaleString()} attempts · ${downloads.toLocaleString()} successful · ${failures.toLocaleString()} failed</div></div></div><div class="akdp-card"><div class="akdp-title">🔥 Most Used Tools</div><div class="akdp-list">${top.length?top.map(x=>`<div class="akdp-row"><div><b>${esc(x.name)}</b><div class="akdp-bar"><i style="width:${Math.max(3,x.count/Math.max(1,top[0].count)*100)}%"></i></div></div><strong>${x.count.toLocaleString()}</strong></div>`).join(''):'<div class="akdp-sub">No tool usage recorded yet.</div>'}</div></div><div class="akdp-card"><div class="akdp-title">📊 Category / Tool Overview</div><div class="akdp-list"><div class="akdp-row"><b>Registered tools</b><strong>${ts.length}</strong></div><div class="akdp-row"><b>Enabled tools</b><strong>${ts.filter(x=>x.enabled!==false).length}</strong></div><div class="akdp-row"><b>Page views</b><strong>${views.toLocaleString()}</strong></div></div></div><div class="akdp-card"><div class="akdp-title">🟢 System Status</div><div class="akdp-status"><div class="akdp-pill">Website <span class="akdp-ok">● Online</span></div><div class="akdp-pill">API <span class="akdp-ok">● Online</span></div><div class="akdp-pill">Storage <span class="akdp-ok">● Connected</span></div><div class="akdp-pill">Analytics <span class="akdp-ok">● Active</span></div></div><div class="akdp-sub" style="margin-top:10px">Technical checks remain under More → Health.</div></div></div>`;card.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>{days=Number(b.dataset.days);load()})}catch(e){card.innerHTML='<div class="akdp-card"><b>Dashboard unavailable</b><div class="akdp-sub">'+esc(e.message)+'</div></div>'}}
+load();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,100));else setTimeout(init,100);
 })();
