@@ -18,7 +18,7 @@ html,body{background:#fff!important;color:#0a1628!important}
 #drawer.open{pointer-events:auto!important;z-index:2147483647!important;top:0!important;bottom:0!important;height:100vh!important}
 .bottom,.bottomin,.bottom button{pointer-events:auto!important;z-index:900!important}
 .topbar,.topin,.top-left,.top-right,.iconbtn,.logout{pointer-events:auto!important}
-@media(max-width:560px){#drawer.open{width:100vw!important;max-width:none!important}.topbar{z-index:100!important}}
+@media(max-width:560px){#drawer.open{width:320px!important;max-width:86vw!important}.topbar{z-index:100!important}}
 </style>`;
 
 const TAP_FIX = `<script>(function(){
