@@ -46,6 +46,6 @@ export default {async fetch(request,env,ctx){
   let html=await response.text();
   html=html.replaceAll('/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png','/LogoName.png').replaceAll('/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png','/LogoName.png').replaceAll('/38364009-f822-430a-9f51-694b12b8d9ef.png','/Logo.png').replaceAll('/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png','/Name.png');
   html=html.replace('</head>',LIGHT_ADMIN+'</head>');
-  html=html.replace('</body>',TAP_FIX+'<script src="/admin-login-fix.js?v=4"></script><script src="/admin-ui-fix.js?v=1"></script><script src="/admin-categories-fix.js?v=1"></script></body>');
+  html=html.replace('</body>',TAP_FIX+'<script src="/admin-login-fix.js?v=4"></script><script src="/admin-ui-fix.js?v=1"></script><script src="/admin-categories-fix.js?v=2"></script></body>');
   const headers=new Headers(response.headers);headers.delete('content-length');headers.set('Cache-Control','no-store');return new Response(html,{status:response.status,headers});
 }};
