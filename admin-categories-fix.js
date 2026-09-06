@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const api = async (url, options) => { const r=await fetch(url,options); const d=await r.json().catch(()=>({})); if(!r.ok||d.success===false)throw new Error(d.error||'Request failed'); return d; };
-  const esc = v => String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
+  const esc = v => String(v??'').replace(/[&<>\\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;'}[m]));
   const DEFAULT_CATS=[
     {id:'cat-image',name:'Image Tools'},
     {id:'cat-pdf',name:'PDF Tools'},
@@ -20,8 +20,6 @@
     if(custom){custom.id='atmCategories';custom.previousElementSibling&&(custom.previousElementSibling.textContent='CATEGORIES');}
     const addCat=$('atmAddCategory');
     if(addCat){addCat.classList.remove('secondary');addCat.classList.add('primary');}
-    const stats=$('atmCategories');
-    if(stats) stats.textContent=document.querySelectorAll('#atmList .atm-tool').length?document.querySelectorAll('[data-tool-category]').length?new Set(Array.from(document.querySelectorAll('[data-tool-category]')).map(x=>x.value).filter(Boolean)).size:0:0;
   }
   function observeStats(){
     const list=$('atmList');
@@ -30,6 +28,48 @@
     update();
     new MutationObserver(update).observe(list,{childList:true,subtree:true});
   }
-  async function start(){await normalizeRegistry();await cats();enhanceCategories();enhanceTools();enhanceStats();observeStats();}
+  function categoryFirstUI(){
+    const toolbar=$('atmToolbar')||document.querySelector('.atm-toolbar');
+    const platform=$('atmPlatform');
+    const status=$('atmStatus');
+    if(!toolbar||!platform||!status||toolbar.dataset.categoryFirst)return;
+    toolbar.dataset.categoryFirst='1';
+    platform.style.display='none';
+    const filter=document.createElement('select');
+    filter.id='atmCategoryFilter';
+    filter.innerHTML='<option value="">All Categories</option>';
+    filter.style.cssText='width:100%;padding:10px 11px;border:1px solid #d8e1ec;border-radius:10px;background:#fff;color:#0a1628;outline:0;font-size:10px';
+    platform.insertAdjacentElement('afterend',filter);
+    cats().then(a=>{filter.innerHTML='<option value="">All Categories</option>'+a.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');applyCategoryFilter();}).catch(()=>{});
+    filter.addEventListener('change',applyCategoryFilter);
+    function applyCategoryFilter(){
+      const wanted=filter.value;
+      document.querySelectorAll('#atmList .atm-tool').forEach(row=>{
+        const select=row.querySelector('[data-tool-category]');
+        row.style.display=!wanted||select?.value===wanted?'':'none';
+      });
+      groupByCategory();
+    }
+    function groupByCategory(){
+      const list=$('atmList');
+      if(!list)return;
+      const rows=Array.from(list.querySelectorAll('.atm-tool'));
+      list.querySelectorAll('.atm-category-heading').forEach(x=>x.remove());
+      if(!rows.length)return;
+      const map=new Map();
+      rows.forEach(row=>{const select=row.querySelector('[data-tool-category]');const key=select?.value||'__none';if(!map.has(key))map.set(key,[]);map.get(key).push(row);});
+      const names={};
+      filter.querySelectorAll('option').forEach(o=>{if(o.value)names[o.value]=o.textContent});
+      map.forEach((items,key)=>{
+        const heading=document.createElement('div');heading.className='atm-category-heading';heading.textContent=key==='__none'?'Uncategorized':(names[key]||'Category');
+        heading.style.cssText='margin:14px 2px 2px;padding:7px 10px;border-radius:9px;background:#eef6ff;color:#1677ff;font-size:10px;font-weight:900;letter-spacing:.4px;text-transform:uppercase';
+        list.insertBefore(heading,items[0]);
+      });
+    }
+    const observer=new MutationObserver(()=>{setTimeout(()=>{applyCategoryFilter()},0)});
+    observer.observe($('atmList'),{childList:true,subtree:true});
+    setTimeout(applyCategoryFilter,300);
+  }
+  async function start(){await normalizeRegistry();await cats();enhanceCategories();enhanceTools();enhanceStats();observeStats();setTimeout(categoryFirstUI,250);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
