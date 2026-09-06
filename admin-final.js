@@ -12,6 +12,13 @@ html,body{background:#fff!important;color:#0a1628!important}
 .row,.toolrow,.aks-row{border-bottom-color:#e4eaf2!important}.statusbox,.custom-editor,.empty,.atm-tool,.atm-stat,.atm-empty{background:#f7faff!important;color:#0a1628!important;border-color:#e4eaf2!important}.toolicon,.atm-icon{background:#edf5ff!important;border-color:#d8e8fb!important}
 .drawer{background:#fff!important;border-right-color:#e4eaf2!important}.drawer-head{border-bottom-color:#e4eaf2!important}.drawer a{color:#68778b!important}.drawer a.active,.drawer a:hover{background:#edf5ff!important;color:#1677ff!important}.bottom{background:#fff!important;border-top-color:#e4eaf2!important}.bottom button{color:#68778b!important}.bottom button.active{color:#1677ff!important}
 .login-page{background:#fff!important}.loginbox{background:#fff!important;color:#0a1628!important;border-color:#e4eaf2!important;box-shadow:0 20px 60px rgba(18,38,68,.08)!important}.loginbox p{color:#68778b!important}.toast{background:#fff!important;color:#0a1628!important;border-color:#d8e1ec!important}
+/* Keep the invisible drawer overlay from intercepting every tap. */
+#drawerOverlay:not(.show){display:none!important;pointer-events:none!important}
+#drawerOverlay.show{display:block!important;pointer-events:auto!important}
+#drawer:not(.open){pointer-events:none!important}
+#drawer.open{pointer-events:auto!important}
+.bottom,.bottomin,.bottom button{pointer-events:auto!important}
+.topbar,.topin,.top-left,.top-right,.iconbtn,.logout{pointer-events:auto!important}
 </style>`;
 
 export default {
@@ -35,7 +42,7 @@ export default {
       .replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png", "/Logo.png")
       .replaceAll("/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png", "/Name.png");
     html = html.replace("</head>", LIGHT_ADMIN + "</head>");
-    html = html.replace("</body>", '<script src="/admin-login-fix.js?v=2"></script></body>');
+    html = html.replace("</body>", '<script src="/admin-login-fix.js?v=3"></script></body>');
 
     const headers = new Headers(response.headers);
     headers.delete("content-length");
