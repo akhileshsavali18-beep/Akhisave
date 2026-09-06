@@ -16,6 +16,11 @@ async function fixMenu(response){
   html=html.replace(/<div\b[^>]*id=["']akhisaveMenuPanel["'][^>]*>[\s\S]*?<\/div>/gi,"");
   if(!/<header\b/i.test(html))return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});
 
+  const footer=`<footer class="akhisave-site-footer"><div class="akhisave-footer-inner"><a class="akhisave-footer-brand" href="/"><img src="/LogoName.png" alt="AkhiSave"></a><nav class="akhisave-footer-links" aria-label="Footer"><a href="/about.html">About</a><a href="/contact.html">Contact Us</a><a href="/imprint.html">Imprint</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></nav><div class="akhisave-footer-copy">© 2026 AkhiSave. All rights reserved.</div></div></footer>`;
+  html=html.replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi,footer);
+  const footerCss=`<style id="akhisave-footer-css">.akhisave-site-footer{border-top:1px solid #e4eaf2;background:#f7f9fc;padding:30px 18px 34px;margin-top:10px}.akhisave-footer-inner{max-width:1160px;margin:auto;text-align:center}.akhisave-footer-brand{display:inline-flex;align-items:center;justify-content:center}.akhisave-footer-brand img{width:190px;height:62px;object-fit:contain;display:block}.akhisave-footer-links{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;margin-top:13px}.akhisave-footer-links a{color:#526177;text-decoration:none;font-size:12px;font-weight:700}.akhisave-footer-links a:hover{color:#0068fc}.akhisave-footer-copy{margin-top:14px;color:#7b8798;font-size:10px}@media(max-width:600px){.akhisave-site-footer{padding:25px 13px 30px}.akhisave-footer-brand img{width:178px;height:58px}.akhisave-footer-links{gap:12px 17px}.akhisave-footer-links a{font-size:11px}}</style>`;
+  html=html.replace(/<\/head>/i,footerCss+"</head>");
+
   const markup=`<button class="akhisave-menu-btn" id="akhisaveMenuBtn" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button><div id="akhisaveMenuPanel" aria-hidden="true"></div>`;
   const navinOpen=/<div\b[^>]*class=["'][^"']*(?:^|\s)navin(?:\s|$)[^"']*["'][^>]*>/i;
   if(navinOpen.test(html))html=html.replace(navinOpen,(m)=>m+markup);else html=html.replace(/<\/header>/i,markup+"</header>");
