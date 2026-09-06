@@ -18,7 +18,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Authentication must always reach the real worker endpoint.
     if (request.method === "POST" && url.pathname === "/api/admin/login") {
       return worker.fetch(request, env, ctx);
     }
@@ -30,14 +29,13 @@ export default {
     if (!type.includes("text/html")) return response;
     let html = await response.text();
 
-    // Final guard: regardless of which inner wrapper served the page, force
-    // the requested light admin theme and current logo asset paths.
     html = html
       .replaceAll("/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png", "/LogoName.png")
       .replaceAll("/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png", "/LogoName.png")
       .replaceAll("/38364009-f822-430a-9f51-694b12b8d9ef.png", "/Logo.png")
       .replaceAll("/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png", "/Name.png");
     html = html.replace("</head>", LIGHT_ADMIN + "</head>");
+    html = html.replace("</body>", '<script src="/admin-login-fix.js?v=2"></script></body>');
 
     const headers = new Headers(response.headers);
     headers.delete("content-length");
