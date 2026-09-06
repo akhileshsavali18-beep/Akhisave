@@ -17,16 +17,18 @@
   async function enhanceTools(){const list=$('atmList');if(!list||list.dataset.categoryEnhanced)return;list.dataset.categoryEnhanced='1';const observer=new MutationObserver(async()=>{if(!list.querySelector('.atm-tool'))return;const [a,d]=await Promise.all([cats().catch(()=>[]),api('/api/admin/tools').catch(()=>({tools:[]}))]);const tools=Array.isArray(d.tools)?d.tools:[];list.querySelectorAll('button[data-act="edit"]').forEach(btn=>{const row=btn.closest('.atm-tool');if(!row||row.querySelector('[data-tool-category]'))return;const index=Number(btn.dataset.i),target=tools[index];const select=document.createElement('select');select.dataset.toolCategory='1';select.style.cssText='border:1px solid #d8e1ec;border-radius:8px;padding:6px 7px;background:#fff;color:#0a1628;font-size:9px;max-width:150px';select.innerHTML='<option value="">No category</option>'+a.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');select.value=target?.categoryId||categoryFor(target||{});select.onchange=async()=>{try{const fresh=await api('/api/admin/tools');const all=Array.isArray(fresh.tools)?fresh.tools:[];const realIndex=all.findIndex(x=>x.id===target?.id);if(realIndex<0)return;all[realIndex].categoryId=select.value||null;await api('/api/admin/tools',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tools:all})});if(typeof window.toast==='function')window.toast('Category assigned.')}catch(e){alert(e.message)}};row.querySelector('.atm-actions')?.before(select)});});observer.observe(list,{childList:true,subtree:true});}
   function enhanceStats(){
     const custom=$('atmCustom');
-    if(custom){custom.id='atmCategories';custom.previousElementSibling&&(custom.previousElementSibling.textContent='CATEGORIES');}
+    if(custom){const label=custom.previousElementSibling;if(label)label.textContent='CATEGORIES';}
     const addCat=$('atmAddCategory');
     if(addCat){addCat.classList.remove('secondary');addCat.classList.add('primary');}
+    const stat=$('atmCustom');
+    if(stat) cats().then(a=>{stat.textContent=a.length}).catch(()=>{});
   }
   function observeStats(){
     const list=$('atmList');
     if(!list)return;
-    const update=()=>{enhanceStats(); if($('atmCategories')) cats().then(a=>{$('atmCategories').textContent=a.length}).catch(()=>{});};
+    const update=()=>enhanceStats();
     update();
-    new MutationObserver(update).observe(list,{childList:true,subtree:true});
+    new MutationObserver(records=>{if(records.some(r=>r.addedNodes.length||r.removedNodes.length))update();}).observe(list,{childList:true,subtree:true});
   }
   function categoryFirstUI(){
     const toolbar=$('atmToolbar')||document.querySelector('.atm-toolbar');
@@ -57,7 +59,7 @@
       list.querySelectorAll('.atm-category-heading').forEach(x=>x.remove());
       if(!rows.length)return;
       const map=new Map();
-      rows.forEach(row=>{const select=row.querySelector('[data-tool-category]');const key=select?.value||'__none';if(!map.has(key))map.set(key,[]);map.get(key).push(row);});
+      rows.forEach(row=>{if(row.style.display==='none')return;const select=row.querySelector('[data-tool-category]');const key=select?.value||'__none';if(!map.has(key))map.set(key,[]);map.get(key).push(row);});
       const names={};
       filter.querySelectorAll('option').forEach(o=>{if(o.value)names[o.value]=o.textContent});
       map.forEach((items,key)=>{
@@ -66,9 +68,11 @@
         list.insertBefore(heading,items[0]);
       });
     }
-    const observer=new MutationObserver(()=>{setTimeout(()=>{applyCategoryFilter()},0)});
+    const observer=new MutationObserver(records=>{
+      if(records.some(r=>Array.from(r.addedNodes).some(n=>n.nodeType===1&&(n.matches?.('.atm-tool')||n.querySelector?.('.atm-tool')))||Array.from(r.removedNodes).some(n=>n.nodeType===1&&(n.matches?.('.atm-tool')||n.querySelector?.('.atm-tool')))))setTimeout(applyCategoryFilter,0);
+    });
     observer.observe($('atmList'),{childList:true,subtree:true});
-    setTimeout(applyCategoryFilter,300);
+    setTimeout(applyCategoryFilter,500);
   }
   async function start(){await normalizeRegistry();await cats();enhanceCategories();enhanceTools();enhanceStats();observeStats();setTimeout(categoryFirstUI,250);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
