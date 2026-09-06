@@ -1,64 +1,18 @@
-(() => {
-  const $ = id => document.getElementById(id);
-  const api = async (url, options) => { const r=await fetch(url,options); const d=await r.json().catch(()=>({})); if(!r.ok||d.success===false)throw new Error(d.error||'Request failed'); return d; };
-  const esc = v => String(v??'').replace(/[&<>\\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;'}[m]));
-  const DEFAULT_CATS=[
-    {id:'cat-image',name:'Image Tools'},
-    {id:'cat-pdf',name:'PDF Tools'},
-    {id:'cat-generator',name:'Generator Tools'},
-    {id:'cat-social',name:'Social Tools'},
-    {id:'cat-utility',name:'Calculator & Utility'},
-    {id:'cat-other',name:'Other Tools'}
-  ];
-  async function cats(){let d=await api('/api/admin/categories');let a=Array.isArray(d.categories)?d.categories:[];if(!a.length){await api('/api/admin/categories',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({categories:DEFAULT_CATS})});a=DEFAULT_CATS}return a;}
-  function categoryFor(t){
-    const id=String(t?.id||'').toLowerCase();
-    const engine=String(t?.engine||t?.type||'').toLowerCase();
-    if(['image-resizer','image-crop','image-compress'].includes(id)||['image-resizer','image-crop','image-compress'].includes(engine))return 'cat-image';
-    if(id==='image-pdf'||engine==='image-pdf')return 'cat-pdf';
-    if(['instagram','youtube','tiktok','facebook','twitter'].includes(String(t?.platform||'').toLowerCase()))return 'cat-social';
-    if(String(t?.platform||'').toLowerCase()==='utility')return 'cat-utility';
-    return 'cat-other';
-  }
-  async function normalizeRegistry(){try{const d=await api('/api/admin/tools');const tools=Array.isArray(d.tools)?d.tools:[];if(!tools.length)return;let changed=false;const out=tools.map(t=>{const wanted=categoryFor(t);if(t.categoryId!==wanted){changed=true;return {...t,categoryId:wanted};}return t;});if(changed)await api('/api/admin/tools',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tools:out})});}catch(e){} }
-  async function enhanceCategories(){const box=$('aksCats');if(!box||box.dataset.enhanced)return;box.dataset.enhanced='1';const observer=new MutationObserver(async()=>{const tags=box.querySelectorAll('.aks-tag');if(!tags.length)return;tags.forEach((tag,i)=>{if(tag.querySelector('[data-cat-edit]'))return;const b=document.createElement('button');b.className='aks-btn alt';b.textContent='Edit';b.dataset.catEdit=i;b.onclick=async()=>{const a=await cats().catch(()=>[]);if(!a[i])return;const name=prompt('Category name',a[i].name);if(name===null)return;const clean=name.trim().slice(0,60);if(!clean)return;if(a.some((c,j)=>j!==i&&c.name.toLowerCase()===clean.toLowerCase())){alert('Category already exists.');return}a[i].name=clean;await api('/api/admin/categories',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({categories:a})});location.reload()};tag.insertBefore(b,tag.lastElementChild)});});observer.observe(box,{childList:true,subtree:true});}
-  async function enhanceTools(){const list=$('atmList');if(!list||list.dataset.categoryEnhanced)return;list.dataset.categoryEnhanced='1';const observer=new MutationObserver(async()=>{if(!list.querySelector('.atm-tool'))return;const [a,d]=await Promise.all([cats().catch(()=>[]),api('/api/admin/tools').catch(()=>({tools:[]}))]);const tools=Array.isArray(d.tools)?d.tools:[];list.querySelectorAll('button[data-act="edit"]').forEach(btn=>{const row=btn.closest('.atm-tool');if(!row||row.querySelector('[data-tool-category]'))return;const index=Number(btn.dataset.i),target=tools[index];const select=document.createElement('select');select.dataset.toolCategory='1';select.className='aks-tool-category-select';select.setAttribute('aria-label','Tool category');select.style.cssText='border:1px solid #d8e1ec;border-radius:8px;padding:6px 7px;background:#fff;color:#0a1628;font-size:9px;max-width:150px;position:relative;z-index:20;pointer-events:auto;touch-action:manipulation;cursor:pointer';select.innerHTML='<option value="">No category</option>'+a.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');select.value=target?.categoryId||categoryFor(target||{});
-        ['touchstart','pointerdown','mousedown','click'].forEach(type=>select.addEventListener(type,e=>e.stopPropagation()));
-        select.onchange=async()=>{try{const fresh=await api('/api/admin/tools');const all=Array.isArray(fresh.tools)?fresh.tools:[];const realIndex=all.findIndex(x=>x.id===target?.id);if(realIndex<0)return;all[realIndex].categoryId=select.value||null;await api('/api/admin/tools',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tools:all})});if(typeof window.toast==='function')window.toast('Category assigned.');const current=$('atmCategoryFilter');if(current){current.dispatchEvent(new Event('change'));}}catch(e){alert(e.message)}};row.querySelector('.atm-actions')?.before(select)});});observer.observe(list,{childList:true,subtree:true});}
-  function enhanceStats(){const custom=$('atmCustom');if(custom){const label=custom.previousElementSibling;if(label)label.textContent='CATEGORIES';}const addCat=$('atmAddCategory');if(addCat){addCat.classList.remove('secondary');addCat.classList.add('primary');}const stat=$('atmCustom');if(stat)cats().then(a=>{stat.textContent=a.length}).catch(()=>{});}
-  function observeStats(){const list=$('atmList');if(!list)return;const update=()=>enhanceStats();update();new MutationObserver(records=>{if(records.some(r=>r.addedNodes.length||r.removedNodes.length))update();}).observe(list,{childList:true,subtree:true});}
-  function categoryFirstUI(){
-    const toolbar=$('atmToolbar')||document.querySelector('.atm-toolbar');
-    const platform=$('atmPlatform');
-    const status=$('atmStatus');
-    if(!toolbar||!platform||!status||toolbar.dataset.categoryFirst)return;
-    toolbar.dataset.categoryFirst='1';
-    platform.style.display='none';
-    const filter=document.createElement('select');
-    filter.id='atmCategoryFilter';
-    filter.innerHTML='<option value="">All Categories</option>';
-    filter.style.cssText='width:100%;padding:10px 11px;border:1px solid #d8e1ec;border-radius:10px;background:#fff;color:#0a1628;outline:0;font-size:10px';
-    platform.insertAdjacentElement('afterend',filter);
-    cats().then(a=>{filter.innerHTML='<option value="">All Categories</option>'+a.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');applyCategoryFilter();}).catch(()=>{});
-    filter.addEventListener('change',applyCategoryFilter);
-    function applyCategoryFilter(){const wanted=filter.value;document.querySelectorAll('#atmList .atm-tool').forEach(row=>{const select=row.querySelector('[data-tool-category]');row.style.display=!wanted||select?.value===wanted?'':'none';});groupByCategory();}
-    function groupByCategory(){
-      const list=$('atmList');if(!list)return;
-      const rows=Array.from(list.querySelectorAll('.atm-tool'));list.querySelectorAll('.atm-category-heading').forEach(x=>x.remove());if(!rows.length)return;
-      const names={};filter.querySelectorAll('option').forEach(o=>{if(o.value)names[o.value]=o.textContent});
-      const groups=new Map();
-      rows.forEach(row=>{if(row.style.display==='none')return;const select=row.querySelector('[data-tool-category]');const key=select?.value||'__none';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);});
-      const order=Array.from(filter.options).map(o=>o.value).filter(Boolean);order.push('__none');
-      order.forEach(key=>{
-        const items=groups.get(key);if(!items?.length)return;
-        const heading=document.createElement('div');heading.className='atm-category-heading';heading.textContent=key==='__none'?'Uncategorized':(names[key]||'Category');heading.style.cssText='margin:14px 2px 2px;padding:7px 10px;border-radius:9px;background:#eef6ff;color:#1677ff;font-size:10px;font-weight:900;letter-spacing:.4px;text-transform:uppercase';
-        list.appendChild(heading);items.forEach(row=>list.appendChild(row));
-      });
-    }
-    const observer=new MutationObserver(records=>{if(records.some(r=>Array.from(r.addedNodes).some(n=>n.nodeType===1&&(n.matches?.('.atm-tool')||n.querySelector?.('.atm-tool')))||Array.from(r.removedNodes).some(n=>n.nodeType===1&&(n.matches?.('.atm-tool')||n.querySelector?.('.atm-tool')))))setTimeout(applyCategoryFilter,0);});
-    observer.observe($('atmList'),{childList:true,subtree:true});
-    setTimeout(applyCategoryFilter,500);
-  }
-  async function start(){await normalizeRegistry();await cats();enhanceCategories();enhanceTools();enhanceStats();observeStats();setTimeout(categoryFirstUI,250);}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+(()=>{
+const $=id=>document.getElementById(id);
+const api=async(u,o)=>{const r=await fetch(u,o),d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.error||'Request failed');return d};
+const esc=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const DEF=[['cat-image','Image Tools'],['cat-pdf','PDF Tools'],['cat-generator','Generator Tools'],['cat-social','Social Tools'],['cat-utility','Calculator & Utility'],['cat-other','Other Tools']];
+async function cats(){let d=await api('/api/admin/categories'),a=Array.isArray(d.categories)?d.categories:[];if(!a.length){a=DEF.map(x=>({id:x[0],name:x[1]}));await api('/api/admin/categories',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({categories:a})})}return a}
+function catFor(t){let id=String(t?.id||'').toLowerCase(),e=String(t?.engine||t?.type||'').toLowerCase(),p=String(t?.platform||'').toLowerCase();if(['image-resizer','image-crop','image-compress'].includes(id)||['image-resizer','image-crop','image-compress'].includes(e))return'cat-image';if(id==='image-pdf'||e==='image-pdf')return'cat-pdf';if(['instagram','youtube','tiktok','facebook','twitter'].includes(p))return'cat-social';if(p==='utility')return'cat-utility';return'cat-other'}
+async function normalize(){try{let d=await api('/api/admin/tools'),a=Array.isArray(d.tools)?d.tools:[],changed=false;let out=a.map(t=>{let c=catFor(t);if(t.categoryId!==c){changed=true;return{...t,categoryId:c}}return t});if(changed)await api('/api/admin/tools',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tools:out})})}catch(e){}}
+function selectFix(){if(document.documentElement.dataset.catTouch)return;document.documentElement.dataset.catTouch='1';['pointerdown','touchstart','mousedown','click'].forEach(type=>document.addEventListener(type,e=>{if(e.target?.matches?.('select[data-tool-category],#atmCategoryFilter'))e.stopPropagation()},true));let s=document.createElement('style');s.textContent='select[data-tool-category],#atmCategoryFilter{position:relative!important;z-index:50!important;pointer-events:auto!important;touch-action:manipulation!important;cursor:pointer!important}';document.head.appendChild(s)}
+function categoriesUI(){let box=$('aksCats');if(!box||box.dataset.fix)return;box.dataset.fix='1';new MutationObserver(()=>{box.querySelectorAll('.aks-tag').forEach((tag,i)=>{if(tag.querySelector('[data-cat-edit]'))return;let b=document.createElement('button');b.className='aks-btn alt';b.textContent='Edit';b.dataset.catEdit='1';b.onclick=async e=>{e.preventDefault();e.stopPropagation();let a=await cats().catch(()=>[]);if(!a[i])return;let n=prompt('Category name',a[i].name);if(n===null)return;n=n.trim().slice(0,60);if(!n)return;if(a.some((c,j)=>j!==i&&c.name.toLowerCase()===n.toLowerCase()))return alert('Category already exists.');a[i].name=n;await api('/api/admin/categories',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({categories:a})});location.reload()};tag.appendChild(b)})}).observe(box,{childList:true,subtree:true})}
+function toolCategories(){let list=$('atmList');if(!list||list.dataset.catFix)return;list.dataset.catFix='1';
+const add=async()=>{let rows=[...list.querySelectorAll('.atm-tool')].filter(r=>r.querySelector('button[data-act="edit"]')&&!r.querySelector('[data-tool-category]'));if(!rows.length)return;let [cs,d]=await Promise.all([cats().catch(()=>[]),api('/api/admin/tools').catch(()=>({tools:[]}))]),all=Array.isArray(d.tools)?d.tools:[];rows.forEach(row=>{let b=row.querySelector('button[data-act="edit"]'),t=all[Number(b.dataset.i)];if(!t)return;let s=document.createElement('select');s.dataset.toolCategory='1';s.setAttribute('aria-label','Tool category');s.innerHTML='<option value="">No category</option>'+cs.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');s.value=t.categoryId||catFor(t);['touchstart','pointerdown','mousedown','click'].forEach(type=>s.addEventListener(type,e=>e.stopPropagation()));s.onchange=async e=>{e.stopPropagation();try{let d=await api('/api/admin/tools'),a=d.tools||[],i=a.findIndex(x=>x.id===t.id);if(i<0)return;a[i].categoryId=s.value||null;await api('/api/admin/tools',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tools:a})});if(typeof toast==='function')toast('Category assigned.');document.getElementById('atmCategoryFilter')?.dispatchEvent(new Event('change'))}catch(e){alert(e.message)}};row.querySelector('.atm-actions')?.before(s)});selectFix();document.getElementById('atmCategoryFilter')?.dispatchEvent(new Event('change'))};
+new MutationObserver(()=>add()).observe(list,{childList:true,subtree:true});add();selectFix()}
+function stats(){let x=$('atmCustom');if(x){let l=x.previousElementSibling;if(l)l.textContent='CATEGORIES';cats().then(a=>x.textContent=a.length).catch(()=>{})}let b=$('atmAddCategory');if(b){b.classList.remove('secondary');b.classList.add('primary')}}
+function categoryFilter(){let toolbar=$('atmToolbar')||document.querySelector('.atm-toolbar'),platform=$('atmPlatform'),status=$('atmStatus');if(!toolbar||!platform||!status||toolbar.dataset.catFirst)return;toolbar.dataset.catFirst='1';platform.style.display='none';let f=document.createElement('select');f.id='atmCategoryFilter';f.innerHTML='<option value="">All Categories</option>';platform.after(f);const fill=async()=>{let a=await cats().catch(()=>[]);f.innerHTML='<option value="">All Categories</option>'+a.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');apply()};const apply=()=>{let want=f.value,rows=[...document.querySelectorAll('#atmList .atm-tool')];rows.forEach(r=>{let s=r.querySelector('[data-tool-category]');r.style.display=!want||s?.value===want?'':'none'});let list=$('atmList');list.querySelectorAll('.atm-category-heading').forEach(x=>x.remove());let names={};[...f.options].forEach(o=>{if(o.value)names[o.value]=o.textContent});let groups=new Map();rows.filter(r=>r.style.display!=='none').forEach(r=>{let k=r.querySelector('[data-tool-category]')?.value||'__none';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r)});let order=[...f.options].map(o=>o.value).filter(Boolean);order.push('__none');order.forEach(k=>{let rs=groups.get(k);if(!rs?.length)return;let h=document.createElement('div');h.className='atm-category-heading';h.textContent=k==='__none'?'Uncategorized':(names[k]||'Category');h.style.cssText='margin:14px 2px 2px;padding:7px 10px;border-radius:9px;background:#eef6ff;color:#1677ff;font-size:10px;font-weight:900;text-transform:uppercase';list.appendChild(h);rs.forEach(r=>list.appendChild(r))})};f.onchange=e=>{e.stopPropagation();apply()};fill();new MutationObserver(ms=>{let fresh=ms.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&n.matches?.('.atm-tool')&&!n.querySelector?.('[data-tool-category]')));if(fresh)setTimeout(apply,0)}).observe($('atmList'),{childList:true,subtree:true});setTimeout(apply,500);selectFix()}
+async function start(){await normalize();await cats();categoriesUI();toolCategories();stats();setTimeout(categoryFilter,250)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
