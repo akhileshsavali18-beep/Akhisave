@@ -19,6 +19,7 @@ html,body{background:#fff!important;color:#0a1628!important}
 .bottom,.bottomin,.bottom button{pointer-events:auto!important;z-index:900!important}
 .topbar,.topin,.top-left,.top-right,.iconbtn,.logout{pointer-events:auto!important}
 @media(max-width:560px){#drawer.open{width:320px!important;max-width:86vw!important}.topbar{z-index:100!important}}
+@media(max-width:700px){#dashboard .ak-grid{grid-template-columns:1fr 1fr!important}#dashboard .ak-two{grid-template-columns:1fr!important}#dashboard .ak-status{grid-template-columns:1fr 1fr!important}}
 </style>`;
 
 const TAP_FIX = `<script>(function(){
@@ -42,7 +43,37 @@ function stripLegacyDashboard(html){
   if(start<0)return html;
   const toolsStart=html.indexOf('<section id="tools" class="tab',start);
   if(toolsStart<0)return html;
-  return html.slice(0,start)+'<section id="dashboard" class="tab active"></section>'+html.slice(toolsStart);
+  const dashboard=`<section id="dashboard" class="tab active">
+    <div class="ak-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px">
+      <div class="card" style="grid-column:1/-1;padding:16px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><h2 style="margin:0;color:#10233f">AkhiSave Dashboard</h2><p style="margin:4px 0 0;color:#718096;font-size:11px">Website-wide activity across all tool categories</p></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn secondary" data-ak-days="1">Today</button><button class="btn secondary" data-ak-days="7">7 Days</button><button class="btn secondary" data-ak-days="30">30 Days</button></div></div></div>
+      <div class="statcard"><div class="label">VISITORS</div><div class="stat" id="akVisitors">—</div></div>
+      <div class="statcard"><div class="label">TOOL USES</div><div class="stat" id="akToolUses">—</div></div>
+      <div class="statcard"><div class="label">FILES PROCESSED</div><div class="stat" id="akFiles">—</div></div>
+      <div class="statcard"><div class="label">ERRORS</div><div class="stat" id="akErrors">—</div></div>
+      <div class="card" style="padding:16px;grid-column:span 3"><h3 style="margin:0;color:#10233f">📈 Traffic &amp; Usage</h3><p style="margin:4px 0;color:#718096;font-size:10px">Recorded analytics for the selected period</p><div id="akChart" style="min-height:120px;padding-top:12px;color:#718096;font-size:11px">Loading analytics…</div></div>
+      <div class="card" style="padding:16px"><h3 style="margin:0;color:#10233f">⚡ Success Rate</h3><div id="akSuccess" style="font-size:30px;font-weight:900;color:#123c7a;margin-top:14px">—</div><p id="akSuccessSub" style="margin:4px 0;color:#718096;font-size:10px">Waiting for analytics…</p></div>
+      <div class="card" style="padding:16px;grid-column:1/-1"><h3 style="margin:0;color:#10233f">🔥 Most Used Tools</h3><div id="akTopTools" style="margin-top:10px;color:#718096;font-size:11px">Loading…</div></div>
+      <div class="card" style="padding:16px;grid-column:1/-1"><h3 style="margin:0;color:#10233f">📊 Category / Tool Overview</h3><div id="akOverview" style="margin-top:10px;color:#53657d;font-size:11px">Loading…</div></div>
+      <div class="card" style="padding:16px;grid-column:1/-1"><h3 style="margin:0;color:#10233f">🟢 System Status</h3><div class="ak-status" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px"><div style="padding:10px;background:#f7faff;border:1px solid #e8edf5;border-radius:11px;font-size:10px">Website <b style="color:#16864a">● Online</b></div><div style="padding:10px;background:#f7faff;border:1px solid #e8edf5;border-radius:11px;font-size:10px">API <b style="color:#16864a">● Online</b></div><div style="padding:10px;background:#f7faff;border:1px solid #e8edf5;border-radius:11px;font-size:10px">Storage <b style="color:#16864a">● Connected</b></div><div style="padding:10px;background:#f7faff;border:1px solid #e8edf5;border-radius:11px;font-size:10px">Analytics <b style="color:#16864a">● Active</b></div></div></div>
+    </div>
+    <script>(function(){
+      function run(){
+        const $=id=>document.getElementById(id),fmt=v=>Number(v||0).toLocaleString();let days=7;
+        async function load(){try{
+          const [a,t]=await Promise.all([fetch('/api/admin/analytics?days='+days,{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()),fetch('/api/admin/tools',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json())]);
+          const num=(o,ks)=>{for(const k of ks)if(typeof o?.[k]==='number')return o[k];return 0};
+          const visitors=num(a,['visitors','uniqueVisitors','unique_visitors']),attempts=num(a,['attempts','download_attempts']),downloads=num(a,['downloads','download_success','successes']),failures=num(a,['failures','download_failures']),files=num(a,['filesProcessed','files_processed','processed']);
+          $('akVisitors').textContent=fmt(visitors);$('akToolUses').textContent=fmt(attempts);$('akFiles').textContent=files?fmt(files):'—';$('akErrors').textContent=fmt(failures);$('akSuccess').textContent=attempts?(downloads/attempts*100).toFixed(1)+'%':'—';$('akSuccessSub').textContent=fmt(attempts)+' attempts · '+fmt(downloads)+' successful · '+fmt(failures)+' failed';
+          const ts=a.tools&&typeof a.tools==='object'&&!Array.isArray(a.tools)?Object.entries(a.tools).map(([name,count])=>({name,count:Number(count)||0})):[];ts.sort((x,y)=>y.count-x.count);$('akTopTools').innerHTML=ts.slice(0,8).map(x=>'<div style="padding:8px 0;border-bottom:1px solid #edf1f6;display:flex;justify-content:space-between"><b>'+String(x.name).replace(/[&<>]/g,'')+'</b><strong>'+fmt(x.count)+'</strong></div>').join('')||'No tool usage recorded yet.';
+          const all=t.tools||[];$('akOverview').innerHTML='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf1f6"><b>Registered tools</b><strong>'+all.length+'</strong></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf1f6"><b>Enabled tools</b><strong>'+all.filter(x=>x.enabled!==false).length+'</strong></div><div style="display:flex;justify-content:space-between;padding:8px 0"><b>Page views</b><strong>'+fmt(num(a,['pageViews','page_views','views']))+'</strong></div>';
+          const daily=Array.isArray(a.daily)?a.daily:Array.isArray(a.days)?a.days:[];if(daily.length){const vals=daily.slice(-14).map(x=>num(x,['pageViews','page_views','views','visitors','downloads']));const max=Math.max(1,...vals);$('akChart').innerHTML='<div style="height:100px;display:flex;align-items:flex-end;gap:5px">'+vals.map(v=>'<div style="flex:1;height:'+Math.max(3,v/max*100)+'%;background:#1769e0;border-radius:4px"></div>').join('')+'</div>'}else $('akChart').textContent='No daily analytics recorded yet.';
+        }catch(e){$('akChart').textContent='Analytics unavailable';$('akTopTools').textContent='Analytics unavailable';$('akOverview').textContent='Analytics unavailable'}}
+        document.querySelectorAll('[data-ak-days]').forEach(b=>b.onclick=()=>{days=Number(b.dataset.akDays);load()});load();
+      }
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
+    })();</script>
+  </section>`;
+  return html.slice(0,start)+dashboard+html.slice(toolsStart);
 }
 
 export default {async fetch(request,env,ctx){
@@ -51,12 +82,7 @@ export default {async fetch(request,env,ctx){
   const response=await suite.fetch(request,env,ctx);
   if(request.method==='GET'&&url.pathname==='/' ){
     const type=response.headers.get('content-type')||'';
-    if(type.includes('text/html')){
-      let html=await response.text();
-      html=html.replace('</head>','<script src="/public-tools.js?v=1"></script></head>');
-      const headers=new Headers(response.headers);headers.delete('content-length');headers.set('Cache-Control','no-store');
-      return new Response(html,{status:response.status,headers});
-    }
+    if(type.includes('text/html')){let html=await response.text();html=html.replace('</head>','<script src="/public-tools.js?v=1"></script></head>');const headers=new Headers(response.headers);headers.delete('content-length');headers.set('Cache-Control','no-store');return new Response(html,{status:response.status,headers});}
   }
   if(request.method!=='GET'||(url.pathname!=='/admin.html'&&url.pathname!=='/admin'))return response;
   const type=response.headers.get('content-type')||'';if(!type.includes('text/html'))return response;
