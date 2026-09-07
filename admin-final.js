@@ -37,6 +37,14 @@ function fixAdminTaps(){
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",fixAdminTaps);else fixAdminTaps();
 })();</script>`;
 
+function stripLegacyDashboard(html){
+  const start=html.indexOf('<section id="dashboard" class="tab active">');
+  if(start<0)return html;
+  const toolsStart=html.indexOf('<section id="tools" class="tab',start);
+  if(toolsStart<0)return html;
+  return html.slice(0,start)+'<section id="dashboard" class="tab active"></section>'+html.slice(toolsStart);
+}
+
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
   if(request.method==='POST'&&url.pathname==='/api/admin/login')return worker.fetch(request,env,ctx);
@@ -54,9 +62,7 @@ export default {async fetch(request,env,ctx){
   const type=response.headers.get('content-type')||'';if(!type.includes('text/html'))return response;
   let html=await response.text();
   html=html.replaceAll('/307a3722-6c83-4b6b-a3fa-a5a840bf5d4b.png','/LogoName.png').replaceAll('/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png','/LogoName.png').replaceAll('/38364009-f822-430a-9f51-694b12b8d9ef.png','/Logo.png').replaceAll('/eb358ee7-8d58-460f-87fa-feb2edd6cd3d.png','/Name.png');
-  // Replace only the real Dashboard section up to the next top-level Tools section.
-  // Do not stop at the first nested </section>, because the old Dashboard contains nested sections.
-  html=html.replace(/(<section id="dashboard" class="tab active">)[\s\S]*?(?=<section id="tools" class="tab")/, '$1</section>');
+  html=stripLegacyDashboard(html);
   html=html.replace('</head>',LIGHT_ADMIN+'</head>');
   html=html.replace('</body>',TAP_FIX+'<script src="/admin-login-fix.js?v=4"></script><script src="/admin-ui-fix.js?v=1"></script><script src="/admin-categories-fix.js?v=2"></script><script src="/admin-dashboard-fix.js?v=4"></script></body>');
   const headers=new Headers(response.headers);headers.delete('content-length');headers.set('Cache-Control','no-store');return new Response(html,{status:response.status,headers});
