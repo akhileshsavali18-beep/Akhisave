@@ -19,61 +19,54 @@
       #ak-suite button,#ak-suite input,#ak-suite textarea,#ak-suite select{pointer-events:auto!important}
     `;
     if (!style.parentNode) document.head.appendChild(style);
-
-    const overlay = document.getElementById('drawerOverlay');
-    if (overlay && !overlay.classList.contains('show')) {
-      overlay.style.display = 'none';
-      overlay.style.visibility = 'hidden';
-      overlay.style.pointerEvents = 'none';
-    }
-    const drawer = document.getElementById('drawer');
-    if (drawer && !drawer.classList.contains('open')) {
-      drawer.style.pointerEvents = 'none';
-      drawer.style.visibility = 'hidden';
-    }
+    const overlay=document.getElementById('drawerOverlay');
+    if(overlay&&!overlay.classList.contains('show')){overlay.style.display='none';overlay.style.visibility='hidden';overlay.style.pointerEvents='none';}
+    const drawer=document.getElementById('drawer');
+    if(drawer&&!drawer.classList.contains('open')){drawer.style.pointerEvents='none';drawer.style.visibility='hidden';}
   }
-
-  function bindAdminLogin() {
+  function showTabFromLocation(){
+    const allowed=['dashboard','tools','settings','more'];
+    const hash=String(location.hash||'').replace(/^#/,'');
+    const tab=allowed.includes(hash)?hash:(localStorage.getItem('akhisave_admin_tab')||'dashboard');
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id===tab));
+    document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));
+    localStorage.setItem('akhisave_admin_tab',tab);
+    if(location.hash!=='#'+tab)history.replaceState(null,'','#'+tab);
+  }
+  async function restoreAdminSession(){
+    try{
+      const r=await fetch('/api/admin/status',{credentials:'same-origin',cache:'no-store'});
+      if(!r.ok)return false;
+      document.getElementById('loginView')?.classList.add('hidden');
+      document.getElementById('adminView')?.classList.remove('hidden');
+      unlockAdminUI();showTabFromLocation();
+      if(typeof window.showAdmin==='function')window.showAdmin();
+      return true;
+    }catch{return false;}
+  }
+  function bindAdminLogin(){
     unlockAdminUI();
-    const form = document.getElementById('loginForm');
-    const password = document.getElementById('password');
-    const error = document.getElementById('loginError');
-    if (!form || !password || !error) return;
-
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      error.textContent = '';
-      const button = form.querySelector('button[type="submit"]');
-      if (button) { button.disabled = true; button.textContent = 'Logging in…'; }
-      try {
-        const response = await fetch('/api/admin/login', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ password: password.value })
-        });
-        const data = await response.json().catch(() => ({}));
-        if (response.ok && data.success) {
-          password.value = '';
-          document.getElementById('loginView')?.classList.add('hidden');
-          document.getElementById('adminView')?.classList.remove('hidden');
-          unlockAdminUI();
-          if (typeof window.showAdmin === 'function') window.showAdmin();
-          else location.reload();
-          return;
+    const form=document.getElementById('loginForm'),password=document.getElementById('password'),error=document.getElementById('loginError');
+    if(!form||!password||!error)return;
+    form.onsubmit=async e=>{
+      e.preventDefault();error.textContent='';
+      const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent='Logging in…';}
+      try{
+        const response=await fetch('/api/admin/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({password:password.value})});
+        const data=await response.json().catch(()=>({}));
+        if(response.ok&&data.success){
+          password.value='';document.getElementById('loginView')?.classList.add('hidden');document.getElementById('adminView')?.classList.remove('hidden');unlockAdminUI();showTabFromLocation();if(typeof window.showAdmin==='function')window.showAdmin();else location.reload();return;
         }
-        error.textContent = data.error || `Login failed (${response.status}).`;
-      } catch (err) {
-        error.textContent = 'Could not connect to the admin server.';
-      } finally {
-        if (button) { button.disabled = false; button.textContent = 'Login'; }
-      }
+        error.textContent=data.error||`Login failed (${response.status}).`;
+      }catch(err){error.textContent='Could not connect to the admin server.';}
+      finally{if(button){button.disabled=false;button.textContent='Login';}}
     };
+    restoreAdminSession();
   }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAdminLogin);
-  else bindAdminLogin();
-
-  // Re-apply the hit-testing fix if the admin page changes drawer state.
-  document.addEventListener('click', () => setTimeout(unlockAdminUI, 0), true);
+  function bindTabPersistence(){
+    document.addEventListener('click',e=>{const el=e.target?.closest?.('[data-tab]');if(!el)return;const tab=el.dataset.tab;if(['dashboard','tools','settings','more'].includes(tab))localStorage.setItem('akhisave_admin_tab',tab);},true);
+    window.addEventListener('hashchange',showTabFromLocation);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{bindAdminLogin();bindTabPersistence();});else{bindAdminLogin();bindTabPersistence();}
+  document.addEventListener('click',()=>setTimeout(unlockAdminUI,0),true);
 })();
