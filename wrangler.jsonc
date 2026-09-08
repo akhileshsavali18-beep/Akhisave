@@ -1,6 +1,6 @@
 {
   "name": "akhisave",
-  "main": "admin-final.js",
+  "main": "entry.js",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": ".",
