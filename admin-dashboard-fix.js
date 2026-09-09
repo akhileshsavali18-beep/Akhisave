@@ -1,28 +1,24 @@
-/* AkhiSave Dashboard — final bots vs human presentation */
+/* AkhiSave Admin Dashboard bridge + Bots/Human + Admin center */
 (function(){
-  if(window.__AKHISAVE_BOT_HUMAN_FINAL__) return;
-  window.__AKHISAVE_BOT_HUMAN_FINAL__=true;
-  function cleanAndAdd(){
-    const d=document.getElementById('dashboard');
+  if(window.__AKHISAVE_ADMIN_CENTER_V4__)return;
+  window.__AKHISAVE_ADMIN_CENTER_V4__=true;
+  function loadScript(src){var s=document.createElement('script');s.src=src;s.async=false;(document.head||document.documentElement).appendChild(s)}
+  loadScript('/admin-dashboard-fix-v8.js?v=9');
+  loadScript('/admin-dashboard-hours-fix.js?v=2');
+  loadScript('/admin-dashboard-bot-human.js?v=1');
+  function adminCenter(){
+    var d=document.getElementById('more');
     if(!d)return;
-    let c=document.getElementById('akBotHumanCard');
-    if(!c){
-      c=document.createElement('div'); c.id='akBotHumanCard'; c.className='v8c';
-      c.innerHTML='<div class="v8title">🤖 Bots vs Human Visitors</div><div class="v8sub">Human visitors and detected bots/crawlers</div><div id="akBotHumanBody" class="v8list"><div class="v8note">Loading visitor classification…</div></div>';
-      const first=d.querySelector('.v8c'); if(first) first.insertAdjacentElement('afterend',c); else d.appendChild(c);
-      load();
-    }
+    document.querySelectorAll('.navlink[data-tab="more"]').forEach(function(a){var i=a.querySelector('.drawer-icon');a.innerHTML='<span class="drawer-icon">⚙</span>Admin';if(i)a.querySelector('.drawer-icon').textContent='⚙'});
+    document.querySelectorAll('.bottom-btn[data-tab="more"]').forEach(function(b){b.innerHTML='<span>⚙</span>Admin'});
+    d.innerHTML='<div class="hero"><div><h1>Admin</h1><p>Site management, security and administrator information.</p></div></div>'+
+      '<div class="card section"><h2>📄 Site Management</h2><p>Quick access to public website information pages.</p><div class="actions"><a class="btn secondary" href="/faq.html">Open FAQ</a><a class="btn secondary" href="/privacy.html">Privacy</a><a class="btn secondary" href="/terms.html">Terms</a><a class="btn secondary" href="/dmca.html">DMCA</a><a class="btn secondary" href="/contact.html">Contact</a></div></div>'+
+      '<div class="card section"><h2>🔐 Security</h2><p>Important security information for the AkhiSave admin panel.</p><div class="row"><div><b>Admin session</b><div class="muted small">Protected admin login session.</div></div><span class="pill">SECURE</span></div><div class="row"><div><b>API keys & secrets</b><div class="muted small">Kept server-side and never displayed here.</div></div><span class="pill">PRIVATE</span></div><div class="row"><div><b>HTTPS</b><div class="muted small">Admin traffic should use secure HTTPS.</div></div><span class="pill">ON</span></div></div>'+
+      '<div class="card section"><h2>🆘 Help & Support</h2><p>Quick guide for using the admin panel.</p><div class="row"><div><b>Dashboard</b><div class="muted small">View traffic, visitors, tools and analytics.</div></div></div><div class="row"><div><b>Tools</b><div class="muted small">Enable, disable and manage available tools.</div></div></div><div class="row"><div><b>Settings</b><div class="muted small">Manage website, API, storage and system settings.</div></div></div></div>'+
+      '<div class="card section"><h2>ℹ️ Admin Info</h2><p>AkhiSave administrator control center.</p><div class="row"><div><b>Panel</b><div class="muted small">Private admin area</div></div><span class="pill">ACTIVE</span></div><div class="row"><div><b>Public website</b><div class="muted small">akhisave.online</div></div><a class="btn secondary" href="/">Open</a></div></div>'+
+      '<div class="card section"><h2>🌐 Website Information</h2><p>Basic live website information without exposing private configuration.</p><div id="akAdminWebsiteInfo" class="grid3"><div class="statusbox"><span class="label">WEBSITE</span><div class="stat">Online</div></div><div class="statusbox"><span class="label">TOOLS</span><div id="akAdminToolCount" class="stat">—</div></div><div class="statusbox"><span class="label">ENABLED</span><div id="akAdminEnabledCount" class="stat">—</div></div></div></div>';
+    fetch('/api/admin/tools',{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.json()}).then(function(x){var a=x.tools||[];var c=document.getElementById('akAdminToolCount'),e=document.getElementById('akAdminEnabledCount');if(c)c.textContent=a.length;if(e)e.textContent=a.filter(function(t){return t.enabled!==false}).length}).catch(function(){});
   }
-  async function load(){
-    const b=document.getElementById('akBotHumanBody'); if(!b)return;
-    try{
-      const r=await fetch('/api/admin/analytics?days=1',{credentials:'same-origin',cache:'no-store'});
-      const a=await r.json(),s=a.summary||{};
-      const h=Number(s.pageViews)||0,x=Number(s.botPageViews)||0,t=h+x,hp=t?h/t*100:0,bp=t?x/t*100:0;
-      b.innerHTML='<div class="v8row"><span>👤 Human page views</span><strong>'+h.toLocaleString()+' · '+hp.toFixed(1)+'%</strong></div><div class="v8bar"><i style="width:'+hp+'%"></i></div><div class="v8row"><span>🤖 Bot / crawler page views</span><strong>'+x.toLocaleString()+' · '+bp.toFixed(1)+'%</strong></div><div class="v8bar"><i style="width:'+bp+'%"></i></div><div class="v8row"><span>Total detected traffic</span><strong>'+t.toLocaleString()+'</strong></div><div class="v8note">Detected bots are excluded from normal human page-view statistics.</div>';
-    }catch(e){b.innerHTML='<div class="v8note">Bot vs human data unavailable.</div>';}
-  }
-  function start(){cleanAndAdd();setTimeout(cleanAndAdd,500);setTimeout(cleanAndAdd,1500);setTimeout(cleanAndAdd,3000);}
+  function start(){adminCenter();setTimeout(adminCenter,300);setTimeout(adminCenter,1000)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-  new MutationObserver(function(){cleanAndAdd();}).observe(document.documentElement,{childList:true,subtree:true});
 })();
