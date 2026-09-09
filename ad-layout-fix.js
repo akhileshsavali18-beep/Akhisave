@@ -50,7 +50,7 @@ export default {async fetch(request,env,ctx){
     const ct=r.headers.get("content-type")||"";
     if(!ct.includes("text/html"))return r;
     let html=await r.text();
-    html=html.replaceAll("/admin-dashboard-fix.js?v=4","/admin-dashboard-fix.js?v=5");
+    html=html.replaceAll("/admin-dashboard-fix.js?v=4","/admin-dashboard-fix-v8.js?v=8");
     const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
     return new Response(html,{status:r.status,headers:h});
   }
