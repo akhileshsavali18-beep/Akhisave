@@ -1,4 +1,5 @@
 import tools from "./tools-entry.js";
+import { analyticsResponse } from "./analytics-core.js";
 
 const PANEL = `
 <style id="akhisave-admin-suite-style">
@@ -34,7 +35,7 @@ export default {async fetch(request,env,ctx){
       }
     }
     if(u.pathname==='/api/admin/analytics'){
-      const days=Math.min(365,Math.max(1,Number(u.searchParams.get('days')||7)));const start=(u.searchParams.get('start')||'').match(/^\d{4}-\d{2}-\d{2}$/)?.[0]||'';const end=(u.searchParams.get('end')||'').match(/^\d{4}-\d{2}-\d{2}$/)?.[0]||'';return json(await rangeAnalytics(env,days,start,end));
+      return analyticsResponse(env,u);
     }
     if(u.pathname==='/api/admin/health')return json({success:true,checks:{kv:Boolean(env.AKHISAVE_SETTINGS),assets:Boolean(env.ASSETS),adminAuth:status.ok},note:'Health checks report configuration availability only.'});
     if(u.pathname==='/api/admin/security')return json({success:true,checks:{adminSession:true,https:u.protocol==='https:',secretExposure:false},note:'Secrets are server-side and are not returned.'});
