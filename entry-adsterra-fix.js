@@ -20,41 +20,58 @@ async function settings(env){
 
 function removeAdsterra(html){
   let out=html;
+  // Remove normal Adsterra script pairs produced by the old entry.js.
   out=out.replace(/<script[^>]*>[\s\S]*?atOptions[\s\S]*?<\/script>[\s\S]*?<script[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");
-  out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?\/scriptscript\s+src\s*=\s*[\"']?https?:\/\/[^\s\"']*highrevenueformat\.com[^\s\"']*[\"']?\s*\/script/gi,"");
-  out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?highrevenueformat\.com[^\s<]*\s*\/script/gi,"");
-  out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[^\s<]*\s*\/script/gi,"");
-  out=out.replace(/<scriptatOptions\s*=\s*[\s\S]*?\/script/gi,"");
+  // Remove the old sanitizer's malformed, visible Adsterra text.
+  out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?highrevenueformat\.com[\s\S]*?(?:\/script|$)/gi,"");
+  out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[\s\S]*?(?:\/script|$)/gi,"");
+  out=out.replace(/<scriptatOptions\s*=\s*[\s\S]*?(?:\/script|$)/gi,"");
   out=out.replace(/No ads\. No account required for the core image resizer\.?/gi,"");
-  // Remove the old sanitizer's bare text "script" without touching real <script> tags.
+  // The old sanitizer can leave a bare text node containing only "script".
+  out=out.replace(/>\s*script\s*</gi,"><");
   out=out.replace(/^\s*script\s*/i,"");
-  out=out.replace(/(<body[^>]*>)\s*script\s*/i,"$1");
   return out;
+}
+
+function insertMiddle(html,ad){
+  const marker=canonicalAdsterra(ad.key);
+  const mainMatch=/<main\b([^>]*)>([\s\S]*?)<\/main>/i.exec(html);
+  if(!mainMatch)return html.replace(/<\/body>/i,marker+"</body>");
+  const inner=mainMatch[2];
+  // Pick a structural closing tag around the visual midpoint instead of putting
+  // the middle ad immediately below the heading/subtitle.
+  const target=inner.length*0.55;
+  const candidates=[];
+  const re=/<\/(?:section|article|div)>/gi;
+  let m;
+  while((m=re.exec(inner))){
+    if(m.index>inner.length*0.30 && m.index<inner.length*0.75)candidates.push(m.index+m[0].length);
+  }
+  let pos=candidates.length?candidates.reduce((best,p)=>Math.abs(p-target)<Math.abs(best-target)?p:best,candidates[0]):Math.floor(target);
+  if(!candidates.length){
+    const fallback=inner.indexOf("</div>",Math.floor(target));
+    if(fallback>=0)pos=fallback+6;
+    else pos=inner.length;
+  }
+  const nextInner=inner.slice(0,pos)+marker+inner.slice(pos);
+  return html.slice(0,mainMatch.index)+`<main${mainMatch[1]}>${nextInner}</main>`+html.slice(mainMatch.index+mainMatch[0].length);
 }
 
 function injectThree(html,ad){
   if(!ad.enabled||!ad.hasCode)return html;
   const top=canonicalAdsterra(ad.key);
-  const middle=canonicalAdsterra(ad.key);
   const bottom=canonicalAdsterra(ad.key);
   let out=html;
 
-  // Top ad: keep it directly inside the main content area when possible.
-  if(/<main\b/i.test(out)){
-    out=out.replace(/<main([^>]*)>/i,'<main$1>'+top);
-  }else if(/<body\b/i.test(out)){
-    out=out.replace(/<body([^>]*)>/i,'<body$1>'+top);
-  }else{
-    out=top+out;
-  }
+  // Exactly one top ad, immediately inside the main content area.
+  if(/<main\b/i.test(out))out=out.replace(/<main([^>]*)>/i,'<main$1>'+top);
+  else if(/<body\b/i.test(out))out=out.replace(/<body([^>]*)>/i,'<body$1>'+top);
+  else out=top+out;
 
-  // Middle ad: place it after the first page heading/subtitle, before the upload/tool area.
-  let placedMiddle=false;
-  out=out.replace(/(<h1\b[^>]*>[\s\S]*?<\/h1>)([\s\S]*?<p\b[^>]*>[\s\S]*?<\/p>)/i,(m,h,p)=>{placedMiddle=true;return h+p+middle;});
-  if(!placedMiddle)out=out.replace(/(<h1\b[^>]*>[\s\S]*?<\/h1>)/i,m=>{placedMiddle=true;return m+middle;});
-  if(!placedMiddle&&/<main\b/i.test(out))out=out.replace(/(<main[^>]*>)/i,'$1'+middle);
+  // Exactly one middle ad, around the visual midpoint of the tool content.
+  out=insertMiddle(out,ad);
 
-  // Bottom ad: keep it at the end of the page.
+  // Exactly one bottom ad, at the end of the page.
   if(/<\/body>/i.test(out))out=out.replace(/<\/body>/i,bottom+'</body>');
   else out+=bottom;
   return out;
