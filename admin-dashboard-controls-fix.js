@@ -1,7 +1,16 @@
 (function(){
   async function req(url,opt){const r=await fetch(url,opt);const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.error||'Request failed');return d}
+  function removeDashboardWebsiteControls(){
+    const dash=document.getElementById('dashboard');if(!dash)return;
+    dash.querySelectorAll('#akDashWebsiteControls,[data-ak-dashboard-website-controls]').forEach(e=>e.remove());
+    dash.querySelectorAll('.card.section').forEach(e=>{
+      const h=e.querySelector('h1,h2,h3');
+      if(h&&/website\s+controls/i.test(h.textContent||''))e.remove();
+    });
+  }
   async function init(){
     try{
+      removeDashboardWebsiteControls();
       const suite=document.getElementById('ak-suite');
       if(suite&&!document.getElementById('akAdminSecurityPanel')){
         const card=document.createElement('div');card.id='akAdminSecurityPanel';card.className='aks-card';card.dataset.panel='settings';
