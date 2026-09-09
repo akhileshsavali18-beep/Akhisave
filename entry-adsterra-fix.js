@@ -108,16 +108,6 @@ export default {async fetch(request,env,ctx){
     }
     return r;
   }
-  if(request.method==='GET'&&(url.pathname==='/admin'||url.pathname==='/admin.html')){
-    const ct=r.headers.get('content-type')||'';
-    if(ct.includes('text/html')){
-      let html=await r.text();
-      if(!html.includes('/admin-dashboard-controls-fix.js'))html=html.replace(/<\/body>/i,'<script src="/admin-dashboard-controls-fix.js?v=1"></script></body>');
-      const h=new Headers(r.headers);h.set('Cache-Control','no-store');h.delete('content-length');
-      return new Response(html,{status:r.status,headers:h});
-    }
-    return r;
-  }
   if(request.method!=="GET"||url.pathname.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(url.pathname))return r;
   const ct=r.headers.get("content-type")||"";
   if(!ct.includes("text/html"))return r;
