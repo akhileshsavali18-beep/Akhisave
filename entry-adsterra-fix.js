@@ -22,11 +22,11 @@ async function settings(env){
 function rewriteSeoObject(d){
   const out={...d};const s={...(out.settings?.seo||{})};
   const legacy=/instagram downloader|download public instagram|instagram photos|instagram reels/i;
-  if(legacy.test(String(s.title||"))||!s.title)s.title=SEO_DEFAULTS.title;
-  if(legacy.test(String(s.description||"))||!s.description)s.description=SEO_DEFAULTS.description;
-  if(legacy.test(String(s.keywords||"))||!s.keywords)s.keywords=SEO_DEFAULTS.keywords;
-  if(legacy.test(String(s.ogTitle||"))||!s.ogTitle)s.ogTitle=SEO_DEFAULTS.ogTitle;
-  if(legacy.test(String(s.ogDescription||"))||!s.ogDescription)s.ogDescription=SEO_DEFAULTS.ogDescription;
+  if(legacy.test(String(s.title||""))||!s.title)s.title=SEO_DEFAULTS.title;
+  if(legacy.test(String(s.description||""))||!s.description)s.description=SEO_DEFAULTS.description;
+  if(legacy.test(String(s.keywords||""))||!s.keywords)s.keywords=SEO_DEFAULTS.keywords;
+  if(legacy.test(String(s.ogTitle||""))||!s.ogTitle)s.ogTitle=SEO_DEFAULTS.ogTitle;
+  if(legacy.test(String(s.ogDescription||""))||!s.ogDescription)s.ogDescription=SEO_DEFAULTS.ogDescription;
   out.settings={...(out.settings||{}),seo:s};return out;
 }
 
@@ -47,7 +47,7 @@ function removeAdsterra(html){
   out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[\s\S]*?(?:\/script|$)/gi,"");
   out=out.replace(/<scriptatOptions\s*=\s*[\s\S]*?(?:\/script|$)/gi,"");
   out=out.replace(/No ads\. No account required for the core image resizer\.?/gi,"");
-  out=out.replace(/>\s*script\s*</gi,"><");
+  out=out.replace(/>\s*script\s*</gi,">");
   out=out.replace(/^\s*script\s*/i,"");
   return out;
 }
