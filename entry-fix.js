@@ -87,7 +87,7 @@ export default {async fetch(request,env,ctx){
     }
   }
   if(request.method==='GET'&&!url.pathname.startsWith('/api/')&&!/^\/admin(?:\.html)?\/?$/i.test(url.pathname)){
-    const r=await base.fetch(request,env,ctx);if(!r.ok)return r;
+    const r=await worker.fetch(request,env,ctx);if(!r.ok)return r;
     const ct=r.headers.get('content-type')||'';if(!ct.includes('text/html'))return r;
     const ext=await extendedSettings(env);let html=await r.text();const s=ext.seo;
     if(url.pathname==='/'||url.pathname==='/index.html'){
