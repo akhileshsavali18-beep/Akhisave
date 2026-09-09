@@ -3,7 +3,7 @@ import base from "./entry.js";
 const DEFAULT_KEY="b5f10b469c2566d06ff288ac7dc9b5b2";
 
 function canonicalAdsterra(key){
-  return `<div class="akhisave-ad akhisave-ad-adsterra" style="width:300px;min-height:250px;margin:16px auto;text-align:center;overflow:hidden"><script>atOptions = { 'key' : '${key}', 'format' : 'iframe', 'height' : 250, 'width' : 300, 'params' : {} };</script><script src="https://www.highrevenueformat.com/${key}/invoke.js"></script></div>`;
+  return `<div class="akhisave-ad akhisave-ad-adsterra" style="width:300px;min-height:250px;margin:18px auto;text-align:center;overflow:hidden"><script>atOptions = { 'key' : '${key}', 'format' : 'iframe', 'height' : 250, 'width' : 300, 'params' : {} };</script><script src="https://www.highrevenueformat.com/${key}/invoke.js"></script></div>`;
 }
 
 async function settings(env){
@@ -20,14 +20,33 @@ async function settings(env){
 
 function removeAdsterra(html){
   let out=html;
-  // Remove any Adsterra script blocks injected by the old entry.js path.
   out=out.replace(/<script[^>]*>[\s\S]*?atOptions[\s\S]*?<\/script>[\s\S]*?<script[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");
-  // Remove the old cleanText() output, including the exact malformed form seen on AkhiSave.
   out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?\/scriptscript\s+src\s*=\s*[\"']?https?:\/\/[^\s\"']*highrevenueformat\.com[^\s\"']*[\"']?\s*\/script/gi,"");
   out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?highrevenueformat\.com[^\s<]*\s*\/script/gi,"");
   out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[^\s<]*\s*\/script/gi,"");
   out=out.replace(/<scriptatOptions\s*=\s*[\s\S]*?\/script/gi,"");
   out=out.replace(/No ads\. No account required for the core image resizer\.?/gi,"");
+  // The previous broken sanitizer can leave only the word "script" at the start of body.
+  out=out.replace(/(<body[^>]*>)\s*script\s*/i,"$1");
+  return out;
+}
+
+function injectThree(html,ad){
+  if(!ad.enabled||!ad.hasCode)return html;
+  const top=canonicalAdsterra(ad.key);
+  const middle=canonicalAdsterra(ad.key);
+  const bottom=canonicalAdsterra(ad.key);
+  let out=html;
+  if(/<main\b/i.test(out)){
+    out=out.replace(/<main([^>]*)>/i,'<main$1>'+top);
+    out=out.replace(/<\/main>/i,middle+'</main>');
+  }else if(/<body\b/i.test(out)){
+    out=out.replace(/<body([^>]*)>/i,'<body$1>'+top);
+  }else{
+    out+=top;
+  }
+  if(/<\/body>/i.test(out))out=out.replace(/<\/body>/i,bottom+'</body>');
+  else out+=bottom;
   return out;
 }
 
@@ -38,13 +57,7 @@ export default {async fetch(request,env,ctx){
   const ct=r.headers.get("content-type")||"";
   if(!ct.includes("text/html"))return r;
   const ad=await settings(env);
-  let html=removeAdsterra(await r.text());
-  if(ad.enabled&&ad.hasCode){
-    const block=canonicalAdsterra(ad.key);
-    if(/<main\b/i.test(html))html=html.replace(/<main([^>]*)>/i,'<main$1>'+block);
-    else if(/<body\b/i.test(html))html=html.replace(/<body([^>]*)>/i,'<body$1>'+block);
-    else html+=block;
-  }
+  const html=injectThree(removeAdsterra(await r.text()),ad);
   const h=new Headers(r.headers);h.set("Cache-Control","no-store");h.delete("content-length");
   return new Response(html,{status:r.status,headers:h});
 }};
