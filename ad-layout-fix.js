@@ -42,6 +42,15 @@ function addThree(html,key){
   return out;
 }
 
+function forceAdminDashboard(html){
+  let out=html;
+  // Remove every older dashboard-fix include so only v8 can initialize the dashboard.
+  out=out.replace(/<script[^>]+src=["']\/admin-dashboard-fix(?:\.js\?v=[^"']*|-v\d+\.js\?v=[^"']*)["'][^>]*><\/script>/gi,"");
+  // Load the current dashboard as the final script, after the other admin UI scripts.
+  out=out.replace(/<\/body>/i,'<script src="/admin-dashboard-fix-v8.js?v=8"></script></body>');
+  return out;
+}
+
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
   const r=await base.fetch(request,env,ctx);
@@ -50,7 +59,7 @@ export default {async fetch(request,env,ctx){
     const ct=r.headers.get("content-type")||"";
     if(!ct.includes("text/html"))return r;
     let html=await r.text();
-    html=html.replaceAll("/admin-dashboard-fix.js?v=4","/admin-dashboard-fix-v8.js?v=8");
+    html=forceAdminDashboard(html);
     const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
     return new Response(html,{status:r.status,headers:h});
   }
