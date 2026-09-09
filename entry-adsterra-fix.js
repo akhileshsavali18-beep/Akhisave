@@ -22,11 +22,11 @@ async function settings(env){
 function rewriteSeoObject(d){
   const out={...d};const s={...(out.settings?.seo||{})};
   const legacy=/instagram downloader|download public instagram|instagram photos|instagram reels/i;
-  if(legacy.test(String(s.title||""))||!s.title)s.title=SEO_DEFAULTS.title;
-  if(legacy.test(String(s.description||""))||!s.description)s.description=SEO_DEFAULTS.description;
-  if(legacy.test(String(s.keywords||""))||!s.keywords)s.keywords=SEO_DEFAULTS.keywords;
-  if(legacy.test(String(s.ogTitle||""))||!s.ogTitle)s.ogTitle=SEO_DEFAULTS.ogTitle;
-  if(legacy.test(String(s.ogDescription||""))||!s.ogDescription)s.ogDescription=SEO_DEFAULTS.ogDescription;
+  if(legacy.test(String(s.title||"))||!s.title)s.title=SEO_DEFAULTS.title;
+  if(legacy.test(String(s.description||"))||!s.description)s.description=SEO_DEFAULTS.description;
+  if(legacy.test(String(s.keywords||"))||!s.keywords)s.keywords=SEO_DEFAULTS.keywords;
+  if(legacy.test(String(s.ogTitle||"))||!s.ogTitle)s.ogTitle=SEO_DEFAULTS.ogTitle;
+  if(legacy.test(String(s.ogDescription||"))||!s.ogDescription)s.ogDescription=SEO_DEFAULTS.ogDescription;
   out.settings={...(out.settings||{}),seo:s};return out;
 }
 
@@ -77,10 +77,45 @@ function injectThree(html,ad){
 
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
+  const body=request.method==='PUT'&&url.pathname==='/api/admin/settings'?await request.clone().json().catch(()=>({})):null;
   const r=await base.fetch(request,env,ctx);
   if(url.pathname==='/api/admin/settings'&&(request.method==='GET'||request.method==='PUT')){
     const ct=r.headers.get('content-type')||'';
-    if(ct.includes('application/json')){const d=await r.json().catch(()=>null);if(d){const fixed=rewriteSeoObject(d);return new Response(JSON.stringify(fixed),{status:r.status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});}}
+    if(ct.includes('application/json')){
+      const d=await r.json().catch(()=>null);
+      if(d){
+        const fixed=rewriteSeoObject(d);
+        const outSettings={...(fixed.settings||{})};
+        try{
+          const raw=await env.AKHISAVE_SETTINGS.get('site_settings');
+          const site=JSON.parse(raw||'{}')||{};
+          outSettings.maintenance=Boolean(site.maintenance);
+          outSettings.announcement=String(site.announcement||'');
+        }catch{}
+        if(request.method==='PUT'&&body&&env.AKHISAVE_SETTINGS){
+          try{
+            const raw=await env.AKHISAVE_SETTINGS.get('site_settings');
+            const site=JSON.parse(raw||'{}')||{};
+            if(Object.prototype.hasOwnProperty.call(body,'maintenance'))site.maintenance=Boolean(body.maintenance);
+            if(Object.prototype.hasOwnProperty.call(body,'announcement'))site.announcement=String(body.announcement||'').slice(0,180);
+            await env.AKHISAVE_SETTINGS.put('site_settings',JSON.stringify(site));
+            outSettings.maintenance=Boolean(site.maintenance);outSettings.announcement=String(site.announcement||'');
+          }catch{}
+        }
+        fixed.settings=outSettings;
+        return new Response(JSON.stringify(fixed),{status:r.status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+      }
+    }
+    return r;
+  }
+  if(request.method==='GET'&&(url.pathname==='/admin'||url.pathname==='/admin.html')){
+    const ct=r.headers.get('content-type')||'';
+    if(ct.includes('text/html')){
+      let html=await r.text();
+      if(!html.includes('/admin-dashboard-controls-fix.js'))html=html.replace(/<\/body>/i,'<script src="/admin-dashboard-controls-fix.js?v=1"></script></body>');
+      const h=new Headers(r.headers);h.set('Cache-Control','no-store');h.delete('content-length');
+      return new Response(html,{status:r.status,headers:h});
+    }
     return r;
   }
   if(request.method!=="GET"||url.pathname.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(url.pathname))return r;
