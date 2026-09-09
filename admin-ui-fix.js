@@ -1,5 +1,20 @@
 (() => {
+  async function refreshDashboardMaintenance() {
+    const dashboard = document.getElementById('dashboard');
+    const status = dashboard?.querySelector('.ak-status');
+    if (!status) return;
+    try {
+      const r = await fetch('/api/admin/settings', {credentials:'same-origin', cache:'no-store'});
+      const d = await r.json();
+      const s = d.settings || d;
+      const on = !!s.maintenance;
+      const first = status.firstElementChild;
+      if (first) first.innerHTML = 'Website <b style="color:' + (on ? '#b06b00' : '#16864a') + '">● ' + (on ? 'Maintenance' : 'Online') + '</b><div style="margin-top:4px;color:#718096;font-size:9px">Manage in Settings</div>';
+    } catch {}
+  }
+
   function fixAdminTabs() {
+    refreshDashboardMaintenance();
     const tools = document.getElementById('tools');
     if (tools) tools.style.removeProperty('display');
     const settings = document.getElementById('settings');
@@ -56,7 +71,7 @@
 
     const ads = document.createElement('section');
     ads.className = 'ak-settings-panel';
-    ads.innerHTML = '<h2>Ads Control</h2><p>Control advertising providers separately. These switches only control the ad settings; ad code can be connected later.</p><div class="ak-switch-row"><div class="ak-switch-copy"><b>Master Ads</b><span>Allow ads to run on the public website.</span></div><input id="akAdsMaster" class="switch" type="checkbox"></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Adsterra</b><span>Enable Adsterra when its publisher code is connected.</span></div><input id="akAdsAdsterra" class="switch" type="checkbox"></div><div class="field"><label>Adsterra Publisher / Zone ID</label><input id="akAdsAdsterraId" maxlength="80" placeholder="Optional ID"></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Monetag</b><span>Enable Monetag when its publisher zone is connected.</span></div><input id="akAdsMonetag" class="switch" type="checkbox"></div><div class="field"><label>Monetag Zone ID</label><input id="akAdsMonetagZone" maxlength="80" placeholder="Optional zone ID"></div><div class="ak-note">Tip: keep Master Ads OFF until the provider setup is ready.</div><div class="ak-actions"><button id="akAdsSave" class="btn primary" style="width:100%">Save Ads Settings</button></div><div id="akAdsMsg" class="ak-msg"></div>';
+    ads.innerHTML = '<h2>Ads Control</h2><p>Control advertising providers separately. A network must also have valid publisher code/zone data before an ad can appear.</p><div class="ak-switch-row"><div class="ak-switch-copy"><b>Master Ads</b><span>Allow ads to run on the public website.</span></div><input id="akAdsMaster" class="switch" type="checkbox"></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Adsterra</b><span>Enable Adsterra when its publisher code is connected.</span></div><input id="akAdsAdsterra" class="switch" type="checkbox"></div><div class="field"><label>Adsterra Ad Code</label><textarea id="akAdsAdsterraCode" placeholder="Paste the complete Adsterra ad code/script"></textarea></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Monetag</b><span>Enable Monetag when its publisher zone is connected.</span></div><input id="akAdsMonetag" class="switch" type="checkbox"></div><div class="field"><label>Monetag Zone ID</label><input id="akAdsMonetagZone" maxlength="80" inputmode="numeric" placeholder="Your Monetag zone ID"></div><div class="ak-note">Master Ads ON + provider ON is not enough for Adsterra: its actual ad code is required. Monetag needs a valid zone ID or its full tag code.</div><div class="ak-actions"><button id="akAdsSave" class="btn primary" style="width:100%">Save Ads Settings</button></div><div id="akAdsMsg" class="ak-msg"></div>';
     settings.insertBefore(ads, website.nextSibling);
 
     const seo = document.createElement('section');
@@ -75,11 +90,13 @@
       $('akSettingsMaintenance').checked = !!s.maintenance;
       $('akSettingsAnnouncement').value = s.announcement || '';
       const a = s.ads || {};
-      $('akAdsMaster').checked = !!a.enabled;
-      $('akAdsAdsterra').checked = !!a.adsterra;
-      $('akAdsAdsterraId').value = a.adsterraId || '';
-      $('akAdsMonetag').checked = !!a.monetag;
-      $('akAdsMonetagZone').value = a.zone || '';
+      const adsterra = a.adsterra || {};
+      const monetag = a.monetag || {};
+      $('akAdsMaster').checked = a.enabled !== false;
+      $('akAdsAdsterra').checked = adsterra.enabled === true;
+      $('akAdsAdsterraCode').value = adsterra.code || '';
+      $('akAdsMonetag').checked = monetag.enabled === true;
+      $('akAdsMonetagZone').value = monetag.zone || '';
       const seo = s.seo || {};
       $('akSeoTitle').value = seo.title || '';
       $('akSeoDescription').value = seo.description || '';
@@ -96,10 +113,11 @@
         const x = await w.json();
         if (!w.ok || x.success === false) throw Error(x.error || 'Could not save settings');
         $(msgId).textContent = 'Settings saved.';
+        refreshDashboardMaintenance();
       } catch (e) { $(msgId).textContent = e.message; }
     }
     $('akSettingsSave').onclick = () => save({maintenance:$('akSettingsMaintenance').checked, announcement:$('akSettingsAnnouncement').value}, 'akSettingsMsg');
-    $('akAdsSave').onclick = () => save({ads:{enabled:$('akAdsMaster').checked,adsterra:$('akAdsAdsterra').checked,adsterraId:$('akAdsAdsterraId').value,monetag:$('akAdsMonetag').checked,zone:$('akAdsMonetagZone').value}}, 'akAdsMsg');
+    $('akAdsSave').onclick = () => save({ads:{enabled:$('akAdsMaster').checked,adsterra:{enabled:$('akAdsAdsterra').checked,code:$('akAdsAdsterraCode').value,placement:'body-end',pages:'all'},monetag:{enabled:$('akAdsMonetag').checked,zone:$('akAdsMonetagZone').value,code:'',placement:'head',pages:'all'}}}, 'akAdsMsg');
     $('akSeoSave').onclick = () => save({seo:{title:$('akSeoTitle').value,description:$('akSeoDescription').value,keywords:$('akSeoKeywords').value,ogTitle:$('akSeoOgTitle').value,ogDescription:$('akSeoOgDescription').value,ogImage:$('akSeoOgImage').value}}, 'akSeoMsg');
     getSettings().then(fill).catch(e => { $('akSettingsMsg').textContent = e.message; $('akAdsMsg').textContent = e.message; $('akSeoMsg').textContent = e.message; });
   }
