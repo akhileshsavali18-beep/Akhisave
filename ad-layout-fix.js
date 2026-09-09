@@ -45,7 +45,16 @@ function addThree(html,key){
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
   const r=await base.fetch(request,env,ctx);
-  if(request.method!=="GET"||url.pathname.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(url.pathname))return r;
+  if(request.method!=="GET")return r;
+  if(/^\/admin(?:\.html)?\/?$/i.test(url.pathname)){
+    const ct=r.headers.get("content-type")||"";
+    if(!ct.includes("text/html"))return r;
+    let html=await r.text();
+    html=html.replaceAll("/admin-dashboard-fix.js?v=4","/admin-dashboard-fix.js?v=5");
+    const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
+    return new Response(html,{status:r.status,headers:h});
+  }
+  if(url.pathname.startsWith("/api/"))return r;
   const ct=r.headers.get("content-type")||"";if(!ct.includes("text/html"))return r;
   const key=await getKey(env),html=removeAds(await r.text()),finalHtml=addThree(html,key);
   const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
