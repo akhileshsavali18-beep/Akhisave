@@ -29,7 +29,6 @@
       #settings .ak-settings-general p,#settings .ak-settings-panel>p{margin:5px 0;color:#68778b;font-size:10px;line-height:1.55}
       #settings .ak-settings-general .ak-brand-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding:11px;border:1px solid #e4eaf2;border-radius:12px;background:#f7faff}
       #settings .ak-settings-general img{width:42px;height:42px;object-fit:contain;border-radius:10px;background:#fff}
-      #settings .ak-settings-panel .ak-help{margin:5px 0 12px;color:#718096;font-size:10px;line-height:1.5}
       #settings .ak-settings-panel .ak-switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #edf1f6}
       #settings .ak-settings-panel .ak-switch-row:last-of-type{border-bottom:0}
       #settings .ak-settings-panel .ak-switch-copy b{display:block;color:#0a1628;font-size:12px}
@@ -71,7 +70,7 @@
 
     const ads = document.createElement('section');
     ads.className = 'ak-settings-panel';
-    ads.innerHTML = '<h2>Ads Control</h2><p>Control advertising providers separately. A network must also have valid publisher code/zone data before an ad can appear.</p><div class="ak-switch-row"><div class="ak-switch-copy"><b>Master Ads</b><span>Allow ads to run on the public website.</span></div><input id="akAdsMaster" class="switch" type="checkbox"></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Adsterra</b><span>Enable Adsterra when its publisher code is connected.</span></div><input id="akAdsAdsterra" class="switch" type="checkbox"></div><div class="field"><label>Adsterra Ad Code</label><textarea id="akAdsAdsterraCode" placeholder="Paste the complete Adsterra ad code/script"></textarea></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Monetag</b><span>Enable Monetag when its publisher zone is connected.</span></div><input id="akAdsMonetag" class="switch" type="checkbox"></div><div class="field"><label>Monetag Zone ID</label><input id="akAdsMonetagZone" maxlength="80" inputmode="numeric" placeholder="Your Monetag zone ID"></div><div class="ak-note">Master Ads ON + provider ON is not enough for Adsterra: its actual ad code is required. Monetag needs a valid zone ID or its full tag code.</div><div class="ak-actions"><button id="akAdsSave" class="btn primary" style="width:100%">Save Ads Settings</button></div><div id="akAdsMsg" class="ak-msg"></div>';
+    ads.innerHTML = '<h2>Ads Control</h2><p>Control advertising providers separately. A network must also have valid publisher code/zone data before an ad can appear.</p><div class="ak-switch-row"><div class="ak-switch-copy"><b>Master Ads</b><span>Allow ads to run on the public website.</span></div><input id="akAdsMaster" class="switch" type="checkbox"></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Adsterra</b><span>Enable Adsterra when its publisher code is connected.</span></div><input id="akAdsAdsterra" class="switch" type="checkbox"></div><div class="field"><label>Adsterra Ad Code</label><textarea id="akAdsAdsterraCode" placeholder="Paste the complete Adsterra ad code/script"></textarea></div><div class="ak-switch-row"><div class="ak-switch-copy"><b>Monetag</b><span>Enable Monetag when its publisher zone is connected.</span></div><input id="akAdsMonetag" class="switch" type="checkbox"></div><div class="field"><label>Monetag Zone ID</label><input id="akAdsMonetagZone" maxlength="80" inputmode="numeric" placeholder="Your Monetag zone ID"></div><div class="ak-note">Master Ads ON + provider ON is required. Adsterra also needs its actual publisher code. Monetag needs a valid zone ID or full tag code.</div><div class="ak-actions"><button id="akAdsSave" class="btn primary" style="width:100%">Save Ads Settings</button></div><div id="akAdsMsg" class="ak-msg"></div>';
     settings.insertBefore(ads, website.nextSibling);
 
     const seo = document.createElement('section');
@@ -92,11 +91,11 @@
       const a = s.ads || {};
       const adsterra = a.adsterra || {};
       const monetag = a.monetag || {};
-      $('akAdsMaster').checked = a.enabled !== false;
+      $('akAdsMaster').checked = a.enabled === true;
       $('akAdsAdsterra').checked = adsterra.enabled === true;
       $('akAdsAdsterraCode').value = adsterra.code || '';
       $('akAdsMonetag').checked = monetag.enabled === true;
-      $('akAdsMonetagZone').value = monetag.zone || '';
+      $('akAdsMonetagZone').value = monetag.zone || '11717101';
       const seo = s.seo || {};
       $('akSeoTitle').value = seo.title || '';
       $('akSeoDescription').value = seo.description || '';
@@ -109,9 +108,16 @@
       try {
         const s = await getSettings();
         Object.keys(patch).forEach(k => s[k] = patch[k]);
-        const w = await fetch('/api/admin/settings', {method:'PUT', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:JSON.stringify(s)});
+        const w = await fetch('/api/admin/settings', {method:'PUT', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:JSON.stringify(s), cache:'no-store'});
         const x = await w.json();
         if (!w.ok || x.success === false) throw Error(x.error || 'Could not save settings');
+        const saved = x.settings || x;
+        if (patch.ads && (!saved.ads || saved.ads.enabled !== patch.ads.enabled)) throw Error('Ads setting was not persisted. Deploy the latest Worker code first.');
+        if (patch.ads && saved.ads) {
+          if (Boolean(saved.ads.adsterra?.enabled) !== Boolean(patch.ads.adsterra?.enabled)) throw Error('Adsterra setting was not persisted. Deploy the latest Worker code first.');
+          if (Boolean(saved.ads.monetag?.enabled) !== Boolean(patch.ads.monetag?.enabled)) throw Error('Monetag setting was not persisted. Deploy the latest Worker code first.');
+        }
+        if (patch.ads) fill(saved);
         $(msgId).textContent = 'Settings saved.';
         refreshDashboardMaintenance();
       } catch (e) { $(msgId).textContent = e.message; }
