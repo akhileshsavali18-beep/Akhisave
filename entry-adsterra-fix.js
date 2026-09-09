@@ -26,7 +26,8 @@ function removeAdsterra(html){
   out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[^\s<]*\s*\/script/gi,"");
   out=out.replace(/<scriptatOptions\s*=\s*[\s\S]*?\/script/gi,"");
   out=out.replace(/No ads\. No account required for the core image resizer\.?/gi,"");
-  // The previous broken sanitizer can leave only the word "script" at the start of body.
+  // Remove the old sanitizer's bare text "script" without touching real <script> tags.
+  out=out.replace(/^\s*script\s*/i,"");
   out=out.replace(/(<body[^>]*>)\s*script\s*/i,"$1");
   return out;
 }
@@ -37,14 +38,23 @@ function injectThree(html,ad){
   const middle=canonicalAdsterra(ad.key);
   const bottom=canonicalAdsterra(ad.key);
   let out=html;
+
+  // Top ad: keep it directly inside the main content area when possible.
   if(/<main\b/i.test(out)){
     out=out.replace(/<main([^>]*)>/i,'<main$1>'+top);
-    out=out.replace(/<\/main>/i,middle+'</main>');
   }else if(/<body\b/i.test(out)){
     out=out.replace(/<body([^>]*)>/i,'<body$1>'+top);
   }else{
-    out+=top;
+    out=top+out;
   }
+
+  // Middle ad: place it after the first page heading/subtitle, before the upload/tool area.
+  let placedMiddle=false;
+  out=out.replace(/(<h1\b[^>]*>[\s\S]*?<\/h1>)([\s\S]*?<p\b[^>]*>[\s\S]*?<\/p>)/i,(m,h,p)=>{placedMiddle=true;return h+p+middle;});
+  if(!placedMiddle)out=out.replace(/(<h1\b[^>]*>[\s\S]*?<\/h1>)/i,m=>{placedMiddle=true;return m+middle;});
+  if(!placedMiddle&&/<main\b/i.test(out))out=out.replace(/(<main[^>]*>)/i,'$1'+middle);
+
+  // Bottom ad: keep it at the end of the page.
   if(/<\/body>/i.test(out))out=out.replace(/<\/body>/i,bottom+'</body>');
   else out+=bottom;
   return out;
