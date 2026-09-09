@@ -16,14 +16,22 @@ function sanitizeAdCode(value){
   const blocks=raw.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi)||[];
   return blocks.filter(b=>/atOptions\s*=|highrevenueformat\.com|adsterra\.com|invoke\.js/i.test(b)).slice(0,6).join("\n");
 }
+function provider(input,key,fallbackZone){
+  const v=input?.[key];
+  if(v&&typeof v==="object")return v;
+  if(typeof v==="boolean")return {enabled:v,code:key==='adsterra'?(input?.adsterraCode??input?.adCode??input?.code??""):input?.code??"",zone:input?.zone??fallbackZone};
+  if(typeof v==="string")return {enabled:true,code:v,zone:input?.zone??fallbackZone};
+  return {enabled:Boolean(input?.[`${key}Enabled`]),code:key==='adsterra'?(input?.adsterraCode??input?.adCode??""):input?.[`${key}Code`]??"",zone:input?.zone??fallbackZone};
+}
 function normalizeAds(input){
   const a=input&&typeof input==="object"?input:{};
-  const x=a.adsterra&&typeof a.adsterra==="object"?a.adsterra:{};
-  const m=a.monetag&&typeof a.monetag==="object"?a.monetag:{};
+  const x=provider(a,'adsterra','');
+  const m=provider(a,'monetag','11717101');
+  const global= a.enabled===true || x.enabled===true || m.enabled===true;
   return {
-    enabled:a.enabled===true,
-    adsterra:{enabled:x.enabled===true,code:sanitizeAdCode(x.code??a.adsterraCode??a.adCode??""),placement:["head","body-start","content-top","body-end"].includes(x.placement)?x.placement:"head",pages:["all","home","tools","result"].includes(x.pages)?x.pages:"all"},
-    monetag:{enabled:m.enabled===true,zone:String(m.zone??a.zone??"11717101").replace(/[^0-9]/g,"").slice(0,30),code:cleanText(m.code,30000),placement:["head","body-start","content-top","body-end"].includes(m.placement)?m.placement:"head",pages:["all","home","tools","result"].includes(m.pages)?m.pages:"all"}
+    enabled:global,
+    adsterra:{enabled:x.enabled===true,code:sanitizeAdCode(x.code),placement:["head","body-start","content-top","body-end"].includes(x.placement)?x.placement:"head",pages:["all","home","tools","result"].includes(x.pages)?x.pages:"all"},
+    monetag:{enabled:m.enabled===true,zone:String(m.zone??"11717101").replace(/[^0-9]/g,"").slice(0,30)||"11717101",code:cleanText(m.code,30000),placement:["head","body-start","content-top","body-end"].includes(m.placement)?m.placement:"head",pages:["all","home","tools","result"].includes(m.pages)?m.pages:"all"}
   };
 }
 async function extendedSettings(env){
@@ -79,7 +87,7 @@ export default {async fetch(request,env,ctx){
     }
   }
   if(request.method==='GET'&&!url.pathname.startsWith('/api/')&&!/^\/admin(?:\.html)?\/?$/i.test(url.pathname)){
-    const r=await worker.fetch(request,env,ctx);if(!r.ok)return r;
+    const r=await base.fetch(request,env,ctx);if(!r.ok)return r;
     const ct=r.headers.get('content-type')||'';if(!ct.includes('text/html'))return r;
     const ext=await extendedSettings(env);let html=await r.text();const s=ext.seo;
     if(url.pathname==='/'||url.pathname==='/index.html'){
