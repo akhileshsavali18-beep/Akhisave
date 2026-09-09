@@ -20,20 +20,15 @@ async function settings(env){
 
 function removeAdsterra(html){
   let out=html;
-  out=out.replace(/<div[^>]*akhisave-ad-adsterra[^>]*>[\s\S]*?highrevenueformat\.com[\s\S]*?<\/div>/gi,"");
-  out=out.replace(/<script\b[^>]*>[\s\S]*?atOptions[\s\S]*?<\/script>\s*<script\b[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");
-  out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?\/scriptscript\s+src=[\s\S]*?\/script/gi,"");
-  out=out.replace(/atOptions\s*=\s*[\s\S]*?\/scriptscript\s+src=[\s\S]*?\/script/gi,"");
+  // Remove any Adsterra script blocks injected by the old entry.js path.
+  out=out.replace(/<script[^>]*>[\s\S]*?atOptions[\s\S]*?<\/script>[\s\S]*?<script[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");
+  // Remove the old cleanText() output, including the exact malformed form seen on AkhiSave.
+  out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?\/scriptscript\s+src\s*=\s*[\"']?https?:\/\/[^\s\"']*highrevenueformat\.com[^\s\"']*[\"']?\s*\/script/gi,"");
+  out=out.replace(/scriptatOptions\s*=\s*[\s\S]*?highrevenueformat\.com[^\s<]*\s*\/script/gi,"");
+  out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[^\s<]*\s*\/script/gi,"");
   out=out.replace(/<scriptatOptions\s*=\s*[\s\S]*?\/script/gi,"");
   out=out.replace(/No ads\. No account required for the core image resizer\.?/gi,"");
   return out;
-}
-
-function injectIntoBody(html,ad){
-  if(!ad.enabled||!ad.hasCode)return html;
-  const block=canonicalAdsterra(ad.key);
-  if(/<\/body>/i.test(html))return html.replace(/<\/body>/i,block+"</body>");
-  return html+block;
 }
 
 export default {async fetch(request,env,ctx){
@@ -44,7 +39,12 @@ export default {async fetch(request,env,ctx){
   if(!ct.includes("text/html"))return r;
   const ad=await settings(env);
   let html=removeAdsterra(await r.text());
-  html=injectIntoBody(html,ad);
+  if(ad.enabled&&ad.hasCode){
+    const block=canonicalAdsterra(ad.key);
+    if(/<main\b/i.test(html))html=html.replace(/<main([^>]*)>/i,'<main$1>'+block);
+    else if(/<body\b/i.test(html))html=html.replace(/<body([^>]*)>/i,'<body$1>'+block);
+    else html+=block;
+  }
   const h=new Headers(r.headers);h.set("Cache-Control","no-store");h.delete("content-length");
   return new Response(html,{status:r.status,headers:h});
 }};
