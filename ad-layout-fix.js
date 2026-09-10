@@ -42,6 +42,11 @@ function addThree(html,key){
   return out;
 }
 
+function injectResizerUi(html,path){
+  if(path!=="/"&&path!=="/index.html")return html;
+  return html.replace(/<\/body>/i,'<script src="/image-resizer-ui-fix.js?v=1"></script></body>');
+}
+
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
   const r=await base.fetch(request,env,ctx);
@@ -62,7 +67,7 @@ export default {async fetch(request,env,ctx){
   if(url.pathname.startsWith("/api/"))return r;
   const ct=r.headers.get("content-type")||"";
   if(!ct.includes("text/html"))return r;
-  const key=await getKey(env),html=removeAds(await r.text()),finalHtml=addThree(html,key);
+  const key=await getKey(env),html=removeAds(await r.text()),finalHtml=injectResizerUi(addThree(html,key),url.pathname);
   const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
   return new Response(finalHtml,{status:r.status,headers:h});
 }};
