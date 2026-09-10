@@ -12,6 +12,21 @@ async function getKey(env){
   }catch{return DEFAULT_KEY}
 }
 
+async function adminAdsense(request,env,ctx){
+  const status=await base.fetch(new Request(new URL('/api/admin/status',request.url),{headers:request.headers}),env,ctx);
+  const headers={'Content-Type':'application/json','Cache-Control':'no-store'};
+  if(!status.ok)return new Response(JSON.stringify({success:false,error:'Unauthorized'}),{status:401,headers});
+  if(!env.AKHISAVE_SETTINGS)return new Response(JSON.stringify({success:false,error:'Settings storage is not connected yet.'}),{status:503,headers});
+  const key='adsense_settings';
+  if(request.method==='GET'){
+    try{const raw=await env.AKHISAVE_SETTINGS.get(key);return new Response(JSON.stringify({success:true,adsense:raw?JSON.parse(raw):{enabled:false,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}catch{return new Response(JSON.stringify({success:true,adsense:{enabled:false,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}
+  }
+  if(request.method==='PUT'){
+    try{const body=await request.json();const code=String(body.code||'').trim().slice(0,5000);const clean={enabled:Boolean(body.enabled),code};await env.AKHISAVE_SETTINGS.put(key,JSON.stringify(clean));return new Response(JSON.stringify({success:true,adsense:clean,message:'AdSense settings saved.'}),{status:200,headers});}catch{return new Response(JSON.stringify({success:false,error:'Could not save AdSense settings.'}),{status:400,headers});}
+  }
+  return new Response(JSON.stringify({success:false,error:'Method not allowed'}),{status:405,headers});
+}
+
 async function getAdsense(env){
   try{
     const raw=await env.AKHISAVE_SETTINGS.get("site_settings_extended");
@@ -91,16 +106,19 @@ function injectAdsense(html,adsense,path){
 
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
+  if(url.pathname==='/api/admin/adsense')return adminAdsense(request,env,ctx);
   const r=await base.fetch(request,env,ctx);
   if(request.method!=="GET")return r;
 
   if(/^\/admin(?:\.html)?\/?$/i.test(url.pathname)){
     const ct=r.headers.get("content-type")||"";
     if(!ct.includes("text/html"))return r;
+    let html=await r.text();
+    html=html.replace(/<\/body>/i,'<script src="/admin-adsense.js?v=1"></script></body>');
     const h=new Headers(r.headers);
     h.delete("content-length");
     h.set("Cache-Control","no-store");
-    return new Response(r.body,{status:r.status,headers:h});
+    return new Response(html,{status:r.status,headers:h});
   }
 
   if(url.pathname.startsWith("/api/"))return r;
