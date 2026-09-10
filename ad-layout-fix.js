@@ -19,10 +19,12 @@ async function adminAdsense(request,env,ctx){
   if(!env.AKHISAVE_SETTINGS)return new Response(JSON.stringify({success:false,error:'Settings storage is not connected yet.'}),{status:503,headers});
   const key='adsense_settings';
   if(request.method==='GET'){
-    try{const raw=await env.AKHISAVE_SETTINGS.get(key);return new Response(JSON.stringify({success:true,adsense:raw?JSON.parse(raw):{enabled:false,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}catch{return new Response(JSON.stringify({success:true,adsense:{enabled:false,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}
+    try{const raw=await env.AKHISAVE_SETTINGS.get(key);return new Response(JSON.stringify({success:true,adsense:raw?JSON.parse(raw):{enabled:true,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}
+    catch{return new Response(JSON.stringify({success:true,adsense:{enabled:true,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}
   }
   if(request.method==='PUT'){
-    try{const body=await request.json();const code=String(body.code||'').trim().slice(0,5000);const clean={enabled:Boolean(body.enabled),code};await env.AKHISAVE_SETTINGS.put(key,JSON.stringify(clean));return new Response(JSON.stringify({success:true,adsense:clean,message:'AdSense settings saved.'}),{status:200,headers});}catch{return new Response(JSON.stringify({success:false,error:'Could not save AdSense settings.'}),{status:400,headers});}
+    try{const body=await request.json();const code=String(body.code||'').trim().slice(0,5000);const clean={enabled:Boolean(body.enabled),code};await env.AKHISAVE_SETTINGS.put(key,JSON.stringify(clean));return new Response(JSON.stringify({success:true,adsense:clean,message:'AdSense settings saved.'}),{status:200,headers});}
+    catch{return new Response(JSON.stringify({success:false,error:'Could not save AdSense settings.'}),{status:400,headers});}
   }
   return new Response(JSON.stringify({success:false,error:'Method not allowed'}),{status:405,headers});
 }
@@ -31,12 +33,12 @@ async function getAdsense(env){
   try{
     const raw=await env.AKHISAVE_SETTINGS.get("adsense_settings");
     const a=JSON.parse(raw||"{}")||{};
-    const rawCode=String(a.code||"");
+    const rawCode=String(a.code||DEFAULT_ADSENSE_CODE);
     const m=rawCode.match(/https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\?client=(ca-pub-\d{16})/i)||rawCode.match(/(ca-pub-\d{16})/i);
-    if(!m||!Boolean(a.enabled))return{enabled:false,code:""};
+    if(!m||a.enabled===false)return{enabled:false,code:""};
     const id=(m[1]||m[0]).toLowerCase();
     return{enabled:true,code:`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${id}" crossorigin="anonymous"></script>`};
-  }catch{return{enabled:false,code:DEFAULT_ADSENSE_CODE};}
+  }catch{return{enabled:true,code:DEFAULT_ADSENSE_CODE};}
 }
 
 function removeAds(html){
