@@ -1,0 +1,13 @@
+(()=>{
+  if(window.__AKHISAVE_ADSENSE_ADMIN_V1__)return;
+  window.__AKHISAVE_ADSENSE_ADMIN_V1__=true;
+  const DEFAULT_CODE='<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3063864969990896" crossorigin="anonymous"></script>';
+  const $=id=>document.getElementById(id);
+  async function api(path,opt){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...opt,headers:{'Content-Type':'application/json',...(opt&&opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok||d.success===false)throw Error(d.error||'Request failed');return d;}
+  function card(){return `<div id="akAdsenseCard" class="aks-card" style="margin-top:12px"><div class="aks-head"><div><h2>Google AdSense</h2><p>Enable the AdSense site verification code from the admin panel.</p></div><button id="akAdsenseSave" class="aks-btn">Save</button></div><div class="aks-row"><div><b>AdSense Code</b><small>Inject the verified Google AdSense code into the public pages.</small></div><input id="akAdsenseEnabled" type="checkbox"></div><div style="margin-top:10px"><label style="font-size:9px;font-weight:800;color:#66758a">ADSENSE CODE</label><textarea id="akAdsenseCode" class="aks-input" style="margin-top:5px;min-height:70px;resize:vertical"></textarea></div><div id="akAdsenseMsg" class="aks-note"></div></div>`;}
+  async function load(){try{const d=await api('/api/admin/adsense');$('akAdsenseEnabled').checked=!!d.adsense?.enabled;$('akAdsenseCode').value=d.adsense?.code||DEFAULT_CODE;}catch(e){$('akAdsenseMsg').textContent=e.message;}}
+  async function save(){const b=$('akAdsenseSave');b.disabled=true;b.textContent='Saving…';try{const d=await api('/api/admin/adsense',{method:'PUT',body:JSON.stringify({enabled:$('akAdsenseEnabled').checked,code:$('akAdsenseCode').value})});$('akAdsenseMsg').textContent=d.message||'AdSense settings saved.';}catch(e){$('akAdsenseMsg').textContent='Save failed: '+e.message;}b.disabled=false;b.textContent='Save';}
+  function mount(){const host=document.querySelector('#dashboard')||document.querySelector('#ak-suite');if(!host||document.getElementById('akAdsenseCard'))return;if(host.id==='dashboard'){const cardWrap=document.createElement('div');cardWrap.innerHTML=card();host.appendChild(cardWrap.firstElementChild);}else{host.insertAdjacentHTML('beforeend',card());}$('akAdsenseSave').onclick=save;load();}
+  function boot(){mount();const obs=new MutationObserver(()=>mount());obs.observe(document.documentElement,{childList:true,subtree:true});setTimeout(mount,500);setTimeout(mount,1500);setTimeout(mount,3000);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
