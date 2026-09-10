@@ -63,6 +63,13 @@ function injectResizerSeoScript(html,path){
   return html.replace(/<\/body>/i,'<script src="/image-resizer-seo.js?v=1"></script></body>');
 }
 
+function injectBrandCss(html,path){
+  if(path.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(path))return html;
+  const css='<style id="ak-public-brand-size">.headin .brand,.navin .brand{margin-right:auto!important}.headin,.navin{justify-content:flex-start!important}.headin .brand img,.navin .brand img{width:415px!important;height:92px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}@media(max-width:700px){.headin .brand img,.navin .brand img{width:415px!important;height:92px!important}.headin,.navin{min-height:106px!important}}</style>';
+  return outInject(html,css);
+}
+function outInject(html,css){return /<\/head>/i.test(html)?html.replace(/<\/head>/i,css+'</head>'):html.replace(/<body([^>]*)>/i,'<body$1>'+css);}
+
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
   const r=await base.fetch(request,env,ctx);
@@ -80,7 +87,7 @@ export default {async fetch(request,env,ctx){
   if(url.pathname.startsWith("/api/"))return r;
   const ct=r.headers.get("content-type")||"";
   if(!ct.includes("text/html"))return r;
-  const key=await getKey(env),html=removeAds(await r.text()),finalHtml=injectResizerSeoScript(injectSeo(injectResizerUi(addThree(html,key),url.pathname),url.pathname),url.pathname);
+  const key=await getKey(env),html=removeAds(await r.text()),finalHtml=injectBrandCss(injectResizerSeoScript(injectSeo(injectResizerUi(addThree(html,key),url.pathname),url.pathname),url.pathname),url.pathname);
   const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
   return new Response(finalHtml,{status:r.status,headers:h});
 }};
