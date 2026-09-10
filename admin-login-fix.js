@@ -1,4 +1,11 @@
 (() => {
+  function restoreAdminBrand() {
+    const brandSrc='/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png';
+    document.querySelectorAll('.loginbox .brand img,.drawer-head .brand img,.top-left .brand img').forEach(img=>{
+      img.src=brandSrc;
+      img.alt='AkhiSave';
+    });
+  }
   function unlockAdminUI() {
     const style = document.getElementById('akhisave-click-unlock') || document.createElement('style');
     style.id = 'akhisave-click-unlock';
@@ -23,6 +30,7 @@
     if(overlay&&!overlay.classList.contains('show')){overlay.style.display='none';overlay.style.visibility='hidden';overlay.style.pointerEvents='none';}
     const drawer=document.getElementById('drawer');
     if(drawer&&!drawer.classList.contains('open')){drawer.style.pointerEvents='none';drawer.style.visibility='hidden';}
+    restoreAdminBrand();
   }
   function showTabFromLocation(){
     const allowed=['dashboard','tools','settings','more'];
