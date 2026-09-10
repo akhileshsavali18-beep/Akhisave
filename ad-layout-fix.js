@@ -1,6 +1,7 @@
 import base from "./entry-adsterra-fix.js";
 
 const DEFAULT_KEY="b5f10b469c2566d06ff288ac7dc9b5b2";
+const DEFAULT_ADSENSE_CODE='<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3063864969990896" crossorigin="anonymous"></script>';
 
 async function getKey(env){
   try{
@@ -9,6 +10,18 @@ async function getKey(env){
     const code=String(v.code||a.adsterraCode||a.adCode||"");
     return(code.match(/(?:key\s*['\"]?\s*[:=]\s*['\"]|highrevenueformat\.com\/)([a-z0-9]+)/i)||[])[1]||DEFAULT_KEY;
   }catch{return DEFAULT_KEY}
+}
+
+async function getAdsense(env){
+  try{
+    const raw=await env.AKHISAVE_SETTINGS.get("site_settings_extended");
+    const x=JSON.parse(raw||"{}")||{},a=x.adsense&&typeof x.adsense==="object"?x.adsense:{};
+    const rawCode=String(a.code||"");
+    const m=rawCode.match(/https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\?client=(ca-pub-\d{16})/i)||rawCode.match(/(ca-pub-\d{16})/i);
+    if(!m||!Boolean(a.enabled))return{enabled:false,code:""};
+    const id=(m[1]||m[0]).toLowerCase();
+    return{enabled:true,code:`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${id}" crossorigin="anonymous"></script>`};
+  }catch{return{enabled:false,code:DEFAULT_ADSENSE_CODE};}
 }
 
 function removeAds(html){
@@ -69,6 +82,12 @@ function injectBrandCss(html,path){
   return outInject(html,css);
 }
 function outInject(html,css){return /<\/head>/i.test(html)?html.replace(/<\/head>/i,css+'</head>'):html.replace(/<body([^>]*)>/i,'<body$1>'+css);}
+function injectAdsense(html,adsense,path){
+  if(path.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(path)||!adsense?.enabled||!adsense?.code)return html;
+  let out=html.replace(/<script[^>]+pagead2\.googlesyndication\.com\/pagead\/js\?client=ca-pub-\d{16}[^>]*><\/script>/gi,"");
+  if(/<\/head>/i.test(out))return out.replace(/<\/head>/i,adsense.code+'</head>');
+  return out.replace(/<body([^>]*)>/i,'<body$1>'+adsense.code);
+}
 
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
@@ -87,7 +106,7 @@ export default {async fetch(request,env,ctx){
   if(url.pathname.startsWith("/api/"))return r;
   const ct=r.headers.get("content-type")||"";
   if(!ct.includes("text/html"))return r;
-  const key=await getKey(env),html=removeAds(await r.text()),finalHtml=injectBrandCss(injectResizerSeoScript(injectSeo(injectResizerUi(addThree(html,key),url.pathname),url.pathname),url.pathname),url.pathname);
+  const key=await getKey(env),adsense=await getAdsense(env),html=removeAds(await r.text()),finalHtml=injectAdsense(injectBrandCss(injectResizerSeoScript(injectSeo(injectResizerUi(addThree(html,key),url.pathname),url.pathname),url.pathname),url.pathname),adsense,url.pathname);
   const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
   return new Response(finalHtml,{status:r.status,headers:h});
 }};
