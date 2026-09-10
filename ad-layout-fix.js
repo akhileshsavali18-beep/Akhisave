@@ -29,8 +29,8 @@ async function adminAdsense(request,env,ctx){
 
 async function getAdsense(env){
   try{
-    const raw=await env.AKHISAVE_SETTINGS.get("site_settings_extended");
-    const x=JSON.parse(raw||"{}")||{},a=x.adsense&&typeof x.adsense==="object"?x.adsense:{};
+    const raw=await env.AKHISAVE_SETTINGS.get("adsense_settings");
+    const a=JSON.parse(raw||"{}")||{};
     const rawCode=String(a.code||"");
     const m=rawCode.match(/https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\?client=(ca-pub-\d{16})/i)||rawCode.match(/(ca-pub-\d{16})/i);
     if(!m||!Boolean(a.enabled))return{enabled:false,code:""};
