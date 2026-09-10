@@ -47,6 +47,17 @@ function injectResizerUi(html,path){
   return html.replace(/<\/body>/i,'<script src="/image-resizer-ui-fix.js?v=1"></script></body>');
 }
 
+function injectSeo(html,path){
+  if(path!=="/"&&path!=="/index.html")return html;
+  const title="Free Image Resizer Online – Resize Images Easily | AkhiSave";
+  const description="Resize images online for free with AkhiSave. Change image dimensions, lock aspect ratio, preview your image and download the resized image instantly.";
+  let out=html;
+  out=out.replace(/<title>[\s\S]*?<\/title>/i,`<title>${title}</title>`);
+  out=out.replace(/<meta\s+name=["']description["'][^>]*>/i,`<meta name="description" content="${description}">`);
+  if(!/name=["']keywords["']/i.test(out))out=out.replace(/<\/head>/i,`<meta name="keywords" content="image resizer, resize image online, free image resizer, image resize online, resize JPG, resize PNG, image dimensions, resize photo online"><meta name="robots" content="index,follow"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="https://akhisave.online/"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"WebApplication","name":"AkhiSave Image Resizer","url":"https://akhisave.online/","description":description,"applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":0,"priceCurrency":"USD"}})}</script></head>`);
+  return out;
+}
+
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url);
   const r=await base.fetch(request,env,ctx);
@@ -67,7 +78,7 @@ export default {async fetch(request,env,ctx){
   if(url.pathname.startsWith("/api/"))return r;
   const ct=r.headers.get("content-type")||"";
   if(!ct.includes("text/html"))return r;
-  const key=await getKey(env),html=removeAds(await r.text()),finalHtml=injectResizerUi(addThree(html,key),url.pathname);
+  const key=await getKey(env),html=removeAds(await r.text()),finalHtml=injectSeo(injectResizerUi(addThree(html,key),url.pathname),url.pathname);
   const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");
   return new Response(finalHtml,{status:r.status,headers:h});
 }};
