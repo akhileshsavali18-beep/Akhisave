@@ -65,7 +65,7 @@ function injectResizerSeoScript(html,path){
 
 function injectBrandCss(html,path){
   if(path.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(path))return html;
-  const css='<style id="ak-public-brand-size">.headin .brand,.navin .brand{margin-right:auto!important}.headin,.navin{justify-content:flex-start!important}.headin .brand img,.navin .brand img{width:350px!important;height:92px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}@media(max-width:700px){.headin .brand img,.navin .brand img{width:350px!important;height:92px!important}.headin,.navin{min-height:106px!important}}</style>';
+  const css='<style id="ak-public-brand-size">.headin .brand,.navin .brand{margin-right:auto!important}.headin,.navin{justify-content:flex-start!important}.headin .brand img,.navin .brand img{width:330px!important;height:76px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}@media(max-width:700px){.headin .brand img,.navin .brand img{width:330px!important;height:76px!important}.headin,.navin{min-height:90px!important}}@media(max-width:430px){.headin .brand img,.navin .brand img{width:330px!important;height:76px!important}}</style>';
   return outInject(html,css);
 }
 function outInject(html,css){return /<\/head>/i.test(html)?html.replace(/<\/head>/i,css+'</head>'):html.replace(/<body([^>]*)>/i,'<body$1>'+css);}
