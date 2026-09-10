@@ -1,6 +1,6 @@
 (() => {
   function restoreAdminBrand() {
-    const brandSrc='/4dc6e410-9139-4401-a2f8-84e67a0a29b2.png';
+    const brandSrc='/LogoName.png';
     document.querySelectorAll('.loginbox .brand img,.drawer-head .brand img,.top-left .brand img').forEach(img=>{
       img.src=brandSrc;
       img.alt='AkhiSave';
