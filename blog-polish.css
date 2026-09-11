@@ -1,0 +1,32 @@
+/* AkhiSave Blog — visual polish layer */
+:root{--akb:#1677ff;--akc:#16c9e8;--akt:#0a1628;--akm:#68778b;--akl:#e4eaf2;--aks:#f5f8fc}
+.bk-nav{box-shadow:0 1px 0 rgba(10,22,40,.02);backdrop-filter:saturate(150%) blur(12px)}
+.bk-in{max-width:1120px!important;min-height:78px!important}
+.bk-logo{transition:transform .2s ease}.bk-logo:hover{transform:translateY(-1px)}
+.bk-nav a:not(.bk-logo){padding:10px 12px;border-radius:10px;transition:background .2s ease,color .2s ease}.bk-nav a:not(.bk-logo):hover{background:#edf5ff;color:var(--akb)}
+.bk-wrap{max-width:1120px!important}
+.bk-hero{padding:76px 0 42px!important;position:relative}
+.bk-hero:before{content:"";position:absolute;left:50%;top:32px;width:180px;height:180px;transform:translateX(-50%);background:radial-gradient(circle,rgba(22,119,255,.10),rgba(22,119,255,0) 68%);pointer-events:none}
+.bk-hero h1,.bk-hero p{position:relative}
+.bk-hero h1{font-size:clamp(38px,5vw,58px)!important;letter-spacing:-2.8px!important;line-height:1.05}
+.bk-hero p{font-size:14px!important;max-width:680px!important}
+.bk-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px!important;padding:20px 0 78px!important}
+.bk-card{padding:24px!important;border-radius:20px!important;box-shadow:0 2px 0 rgba(10,22,40,.02);position:relative;overflow:hidden;animation:akBlogIn .5s both}
+.bk-card:nth-child(2){animation-delay:.06s}.bk-card:nth-child(3){animation-delay:.12s}.bk-card:nth-child(4){animation-delay:.18s}.bk-card:nth-child(5){animation-delay:.24s}.bk-card:nth-child(6){animation-delay:.30s}
+.bk-card:after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--akb),var(--akc));transform:scaleX(0);transform-origin:left;transition:transform .25s ease}
+.bk-card:hover{transform:translateY(-5px)!important;box-shadow:0 18px 42px rgba(18,38,68,.10)!important;border-color:#d5e2f1!important}
+.bk-card:hover:after{transform:scaleX(1)}
+.bk-card time{letter-spacing:.4px}.bk-card h2{font-size:19px!important;line-height:1.35!important;letter-spacing:-.3px}.bk-card p{font-size:12px!important;line-height:1.75!important}.bk-tag{margin-top:15px!important}
+.bk-empty{min-height:170px;display:grid;place-items:center;background:var(--aks)}
+.bk-article{max-width:850px!important;padding:62px 18px 86px!important}
+.bk-back{padding:9px 12px;border:1px solid var(--akl);border-radius:10px;background:#fff;transition:.2s}.bk-back:hover{background:#edf5ff;border-color:#cfe0f7}
+.bk-article .meta{text-transform:uppercase;letter-spacing:.65px}
+.bk-article h1{font-size:clamp(38px,6vw,58px)!important;letter-spacing:-2.8px!important;margin:14px 0 18px!important}
+.bk-excerpt{font-size:17px!important;line-height:1.8!important;padding-bottom:25px;border-bottom:1px solid var(--akl)}
+.bk-content{font-size:15px!important;line-height:2!important;padding-top:12px}
+.bk-content p{margin-bottom:21px!important}.bk-content p:first-child:first-letter{font-size:2.8em;font-weight:800;line-height:.8;float:left;margin:.08em .08em 0 0;color:var(--akb)}
+.bk-foot{padding:30px 18px!important;background:#fbfcfe}
+@keyframes akBlogIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:760px){.bk-in{min-height:72px!important;padding:0 14px!important}.bk-nav a:not(.bk-logo){font-size:11px!important;margin-left:2px!important;padding:8px!important}.bk-logo img{width:230px!important;height:62px!important}.bk-hero{padding:58px 0 30px!important}.bk-grid{grid-template-columns:1fr!important;gap:14px!important;padding-bottom:55px!important}.bk-card{padding:21px!important}.bk-article{padding-top:48px!important}.bk-content p:first-child:first-letter{font-size:2.4em}}
+@media(max-width:430px){.bk-logo img{width:200px!important;height:58px!important}.bk-nav a:not(.bk-logo){font-size:10px!important}.bk-hero h1{letter-spacing:-2px!important}.bk-article h1{letter-spacing:-2px!important}}
+@media(prefers-reduced-motion:reduce){.bk-card{animation:none!important;transition:none!important}.bk-card:hover{transform:none!important}.bk-card:after{transition:none!important}}
