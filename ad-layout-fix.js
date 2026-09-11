@@ -4,118 +4,72 @@ const DEFAULT_KEY="b5f10b469c2566d06ff288ac7dc9b5b2";
 const DEFAULT_ADSENSE_CODE='<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3063864969990896" crossorigin="anonymous"></script>';
 
 async function getKey(env){
+  try{const raw=await env.AKHISAVE_SETTINGS.get("site_settings_extended");const x=JSON.parse(raw||"{}")||{},a=x.ads&&typeof x.ads==="object"?x.ads:{},v=a.adsterra&&typeof a.adsterra==="object"?a.adsterra:{};const code=String(v.code||a.adsterraCode||a.adCode||"");return(code.match(/(?:key\s*['\"]?\s*[:=]\s*['\"]|highrevenueformat\.com\/)([a-z0-9]+)/i)||[])[1]||DEFAULT_KEY;}catch{return DEFAULT_KEY}
+}
+
+const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
+const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const slugify=v=>String(v||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,110);
+async function readPosts(env){if(!env.AKHISAVE_SETTINGS)return[];try{const raw=await env.AKHISAVE_SETTINGS.get('blog_posts');const a=raw?JSON.parse(raw):[];return Array.isArray(a)?a:[]}catch{return[]}}
+async function writePosts(env,posts){if(!env.AKHISAVE_SETTINGS)throw Error('Settings storage is not connected yet.');await env.AKHISAVE_SETTINGS.put('blog_posts',JSON.stringify(posts.slice(0,100)))}
+async function blogApi(request,env,ctx){
+  if(request.method==='GET')return json({success:true,posts:(await readPosts(env)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))) .filter(p=>p.published!==false).map(p=>({title:p.title,slug:p.slug,category:p.category,author:p.author,date:p.date,excerpt:p.excerpt,seoTitle:p.seoTitle,seoDescription:p.seoDescription}))});
+  const status=await base.fetch(new Request(new URL('/api/admin/status',request.url),{headers:request.headers}),env,ctx);if(!status.ok)return json({success:false,error:'Unauthorized'},401);
+  let posts=await readPosts(env);
+  if(request.method==='GET')return json({success:true,posts});
   try{
-    const raw=await env.AKHISAVE_SETTINGS.get("site_settings_extended");
-    const x=JSON.parse(raw||"{}")||{},a=x.ads&&typeof x.ads==="object"?x.ads:{},v=a.adsterra&&typeof a.adsterra==="object"?a.adsterra:{};
-    const code=String(v.code||a.adsterraCode||a.adCode||"");
-    return(code.match(/(?:key\s*['\"]?\s*[:=]\s*['\"]|highrevenueformat\.com\/)([a-z0-9]+)/i)||[])[1]||DEFAULT_KEY;
-  }catch{return DEFAULT_KEY}
+    const body=await request.json();
+    if(request.method==='DELETE'){const slug=slugify(body.slug);const next=posts.filter(p=>p.slug!==slug);await writePosts(env,next);return json({success:true,posts:next})}
+    if(request.method==='PUT'){
+      const x=body.post||{},old=slugify(body.editing||'');const title=String(x.title||'').trim().slice(0,140),slug=slugify(x.slug||title);if(!title||!slug||!String(x.content||'').trim())return json({success:false,error:'Title, slug and article content are required.'},400);if(posts.some(p=>p.slug===slug&&p.slug!==old))return json({success:false,error:'That slug already exists. Choose another slug.'},409);const post={title,slug,category:String(x.category||'General').trim().slice(0,50)||'General',author:String(x.author||'AkhiSave').trim().slice(0,60)||'AkhiSave',date:/^\d{4}-\d{2}-\d{2}$/.test(String(x.date||''))?x.date:new Date().toISOString().slice(0,10),seoTitle:String(x.seoTitle||'').trim().slice(0,160),seoDescription:String(x.seoDescription||'').trim().slice(0,260),excerpt:String(x.excerpt||'').trim().slice(0,320),content:String(x.content||'').slice(0,50000),published:x.published!==false};const idx=posts.findIndex(p=>p.slug===old);if(idx>=0)posts[idx]=post;else posts.unshift(post);await writePosts(env,posts);return json({success:true,post,posts});
+    }
+  }catch(e){return json({success:false,error:'Could not save blog post.'},400)}
+  return json({success:false,error:'Method not allowed'},405);
 }
 
 async function socialApi(request,env,ctx){
-  if(!env.AKHISAVE_SETTINGS)return new Response(JSON.stringify({success:false,error:'Settings storage is not connected yet.'}),{status:503,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+  if(!env.AKHISAVE_SETTINGS)return json({success:false,error:'Settings storage is not connected yet.'},503);
   const key='social_links';
-  if(request.method==='GET'){
-    try{const raw=await env.AKHISAVE_SETTINGS.get(key);return new Response(JSON.stringify({success:true,links:raw?JSON.parse(raw):[]}),{status:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});}catch{return new Response(JSON.stringify({success:true,links:[]}),{status:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}})}
-  }
-  if(request.method==='PUT'){
-    const status=await base.fetch(new Request(new URL('/api/admin/status',request.url),{headers:request.headers}),env,ctx);
-    if(!status.ok)return new Response(JSON.stringify({success:false,error:'Unauthorized'}),{status:401,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
-    try{
-      const body=await request.json();
-      const links=Array.isArray(body.links)?body.links.slice(0,20).map((x,i)=>({name:String(x?.name||'Social Media').replace(/[<>]/g,'').trim().slice(0,40),url:String(x?.url||'').trim().slice(0,500),enabled:x?.enabled!==false})).filter(x=>x.name&&/^https:\/\//i.test(x.url)):[];
-      await env.AKHISAVE_SETTINGS.put(key,JSON.stringify(links));
-      return new Response(JSON.stringify({success:true,links}),{status:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
-    }catch{return new Response(JSON.stringify({success:false,error:'Could not save social links.'}),{status:400,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}})}
-  }
-  return new Response(JSON.stringify({success:false,error:'Method not allowed'}),{status:405,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+  if(request.method==='GET'){try{const raw=await env.AKHISAVE_SETTINGS.get(key);return json({success:true,links:raw?JSON.parse(raw):[]});}catch{return json({success:true,links:[]})}}
+  if(request.method==='PUT'){const status=await base.fetch(new Request(new URL('/api/admin/status',request.url),{headers:request.headers}),env,ctx);if(!status.ok)return json({success:false,error:'Unauthorized'},401);try{const body=await request.json();const links=Array.isArray(body.links)?body.links.slice(0,20).map(x=>({name:String(x?.name||'Social Media').replace(/[<>]/g,'').trim().slice(0,40),url:String(x?.url||'').trim().slice(0,500),enabled:x?.enabled!==false})).filter(x=>x.name&&/^https:\/\//i.test(x.url)):[];await env.AKHISAVE_SETTINGS.put(key,JSON.stringify(links));return json({success:true,links})}catch{return json({success:false,error:'Could not save social links.'},400)}}
+  return json({success:false,error:'Method not allowed'},405);
 }
 
 async function adminAdsense(request,env,ctx){
-  const status=await base.fetch(new Request(new URL('/api/admin/status',request.url),{headers:request.headers}),env,ctx);
-  const headers={'Content-Type':'application/json','Cache-Control':'no-store'};
-  if(!status.ok)return new Response(JSON.stringify({success:false,error:'Unauthorized'}),{status:401,headers});
-  if(!env.AKHISAVE_SETTINGS)return new Response(JSON.stringify({success:false,error:'Settings storage is not connected yet.'}),{status:503,headers});
-  const key='adsense_settings';
-  if(request.method==='GET'){
-    try{const raw=await env.AKHISAVE_SETTINGS.get(key);return new Response(JSON.stringify({success:true,adsense:raw?JSON.parse(raw):{enabled:true,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}
-    catch{return new Response(JSON.stringify({success:true,adsense:{enabled:true,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}
-  }
-  if(request.method==='PUT'){
-    try{const body=await request.json();const code=String(body.code||'').trim().slice(0,5000);const clean={enabled:Boolean(body.enabled),code};await env.AKHISAVE_SETTINGS.put(key,JSON.stringify(clean));return new Response(JSON.stringify({success:true,adsense:clean,message:'AdSense settings saved.'}),{status:200,headers});}
-    catch{return new Response(JSON.stringify({success:false,error:'Could not save AdSense settings.'}),{status:400,headers});}
-  }
+  const status=await base.fetch(new Request(new URL('/api/admin/status',request.url),{headers:request.headers}),env,ctx);const headers={'Content-Type':'application/json','Cache-Control':'no-store'};if(!status.ok)return new Response(JSON.stringify({success:false,error:'Unauthorized'}),{status:401,headers});if(!env.AKHISAVE_SETTINGS)return new Response(JSON.stringify({success:false,error:'Settings storage is not connected yet.'}),{status:503,headers});const key='adsense_settings';
+  if(request.method==='GET'){try{const raw=await env.AKHISAVE_SETTINGS.get(key);return new Response(JSON.stringify({success:true,adsense:raw?JSON.parse(raw):{enabled:true,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers});}catch{return new Response(JSON.stringify({success:true,adsense:{enabled:true,code:DEFAULT_ADSENSE_CODE}}),{status:200,headers})}}
+  if(request.method==='PUT'){try{const body=await request.json();const code=String(body.code||'').trim().slice(0,5000);const clean={enabled:Boolean(body.enabled),code};await env.AKHISAVE_SETTINGS.put(key,JSON.stringify(clean));return new Response(JSON.stringify({success:true,adsense:clean,message:'AdSense settings saved.'}),{status:200,headers});}catch{return new Response(JSON.stringify({success:false,error:'Could not save AdSense settings.'}),{status:400,headers})}}
   return new Response(JSON.stringify({success:false,error:'Method not allowed'}),{status:405,headers});
 }
 
-async function getAdsense(env){
-  try{
-    const raw=await env.AKHISAVE_SETTINGS.get("adsense_settings");
-    const a=JSON.parse(raw||"{}")||{};
-    const rawCode=String(a.code||DEFAULT_ADSENSE_CODE);
-    const m=rawCode.match(/https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\?client=(ca-pub-\d{16})/i)||rawCode.match(/(ca-pub-\d{16})/i);
-    if(!m||a.enabled===false)return{enabled:false,code:""};
-    const id=(m[1]||m[0]).toLowerCase();
-    return{enabled:true,code:`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${id}" crossorigin="anonymous"></script>`};
-  }catch{return{enabled:true,code:DEFAULT_ADSENSE_CODE};}
-}
-
-function removeAds(html){
-  let out=html;
-  out=out.replace(/<div[^>]*(?:data-ak-adsterra|akhisave-ad-adsterra)[^>]*>[\s\S]*?<\/div>/gi,"");
-  out=out.replace(/<script[^>]*>[\s\S]*?atOptions[\s\S]*?<\/script>\s*<script[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");
-  out=out.replace(/script\s+atOptions[\s\S]*?(?:\/script|$)/gi,"");
-  out=out.replace(/scriptatOptions[\s\S]*?(?:\/script|$)/gi,"");
-  out=out.replace(/<script[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");
-  out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[\s\S]*?(?:\/script|$)/gi,"");
-  out=out.replace(/<scriptatOptions[\s\S]*?(?:\/script|$)/gi,"");
-  out=out.replace(/>\s*script\s*</gi,">");
-  return out;
-}
+async function getAdsense(env){try{const raw=await env.AKHISAVE_SETTINGS.get("adsense_settings");const a=JSON.parse(raw||"{}")||{};const rawCode=String(a.code||DEFAULT_ADSENSE_CODE);const m=rawCode.match(/https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\?client=(ca-pub-\d{16})/i)||rawCode.match(/(ca-pub-\d{16})/i);if(!m||a.enabled===false)return{enabled:false,code:""};const id=(m[1]||m[0]).toLowerCase();return{enabled:true,code:`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${id}" crossorigin="anonymous"></script>`};}catch{return{enabled:true,code:DEFAULT_ADSENSE_CODE}}}
+function removeAds(html){let out=html;out=out.replace(/<div[^>]*(?:data-ak-adsterra|akhisave-ad-adsterra)[^>]*>[\s\S]*?<\/div>/gi,"");out=out.replace(/<script[^>]*>[\s\S]*?atOptions[\s\S]*?<\/script>\s*<script[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");out=out.replace(/script\s+atOptions[\s\S]*?(?:\/script|$)/gi,"");out=out.replace(/scriptatOptions[\s\S]*?(?:\/script|$)/gi,"");out=out.replace(/<script[^>]*highrevenueformat\.com[\s\S]*?<\/script>/gi,"");out=out.replace(/atOptions\s*=\s*[\s\S]*?highrevenueformat\.com[\s\S]*?(?:\/script|$)/gi,"");out=out.replace(/<scriptatOptions[\s\S]*?(?:\/script|$)/gi,"");out=out.replace(/>\s*script\s*</gi,">");return out}
 function ad(key){return `<div class="akhisave-ad akhisave-ad-adsterra" data-ak-adsterra="1" style="width:300px;min-height:250px;margin:18px auto;text-align:center;overflow:hidden"><script>atOptions = { 'key' : '${key}', 'format' : 'iframe', 'height' : 250, 'width' : 300, 'params' : {} };</script><script src="https://www.highrevenueformat.com/${key}/invoke.js"></script></div>`}
-function addThree(html,key){
-  const top=ad(key),mid=ad(key),bottom=ad(key);let out=html;
-  const main=/<main\b([^>]*)>([\s\S]*?)<\/main>/i.exec(out);
-  if(main){
-    const inner=main[2],target=inner.length*.55,re=/<\/(?:section|article|div)>/gi,positions=[];let m;
-    while((m=re.exec(inner)))if(m.index>inner.length*.3&&m.index<inner.length*.75)positions.push(m.index+m[0].length);
-    const pos=positions.length?positions.reduce((b,p)=>Math.abs(p-target)<Math.abs(b-target)?p:b,positions[0]):Math.floor(target);
-    const withMid=inner.slice(0,pos)+mid+inner.slice(pos);
-    out=out.slice(0,main.index)+`<main${main[1]}>${top}${withMid}</main>`+out.slice(main.index+main[0].length);
-  }else out=out.replace(/<body([^>]*)>/i,"<body$1>"+top+mid);
-  out=out.replace(/<\/body>/i,bottom+"</body>");return out;
-}
-function injectResizerUi(html,path){if(path!=="/"&&path!=="/index.html")return html;return html.replace(/<\/body>/i,'<script src="/image-resizer-ui-fix.js?v=1"></script></body>');}
-function injectSeo(html,path){
-  if(path!=="/"&&path!=="/index.html")return html;
-  const title="Free Image Resizer Online – Resize Images Easily | AkhiSave";
-  const description="Resize images online for free with AkhiSave. Change image dimensions, lock aspect ratio, preview your image and download the resized image instantly.";
-  let out=html;out=out.replace(/<title>[\s\S]*?<\/title>/i,`<title>${title}</title>`);out=out.replace(/<meta\s+name=["']description["'][^>]*>/i,`<meta name="description" content="${description}">`);
-  if(!/name=["']keywords["']/i.test(out))out=out.replace(/<\/head>/i,`<meta name="keywords" content="image resizer, resize image online, free image resizer, image resize online, resize JPG, resize PNG, image dimensions, resize photo online"><meta name="robots" content="index,follow"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="https://akhisave.online/"><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"WebApplication","name":"AkhiSave Image Resizer","url":"https://akhisave.online/","description":description,"applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":0,"priceCurrency":"USD"}})}</script></head>`);return out;
-}
-function injectResizerSeoScript(html,path){if(path!=="/"&&path!=="/index.html")return html;return html.replace(/<\/body>/i,'<script src="/image-resizer-seo.js?v=1"></script></body>');}
-function injectSocialScript(html){return html.replace(/<\/body>/i,'<script src="/social-media.js?v=1"></script></body>');}
-function injectBrandCss(html,path){
-  if(path.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(path))return html;
-  const css='<style id="ak-public-brand-size">.headin .brand,.navin .brand{margin-right:auto!important}.headin,.navin{justify-content:flex-start!important}.headin .brand img,.navin .brand img{width:280px!important;height:70px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}@media(max-width:700px){.headin .brand img,.navin .brand img{width:280px!important;height:70px!important}.headin,.navin{min-height:82px!important}}@media(max-width:430px){.headin .brand img,.navin .brand img{width:280px!important;height:70px!important}}</style>';return outInject(html,css);
-}
-function outInject(html,css){return /<\/head>/i.test(html)?html.replace(/<\/head>/i,css+'</head>'):html.replace(/<body([^>]*)>/i,'<body$1>'+css);}
-function injectAdsense(html,adsense,path){
-  if(path.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(path)||!adsense?.enabled||!adsense?.code)return html;
-  let out=html.replace(/<script[^>]+pagead2\.googlesyndication\.com\/pagead\/js\?client=ca-pub-\d{16}[^>]*><\/script>/gi,"");
-  if(/<\/head>/i.test(out))return out.replace(/<\/head>/i,adsense.code+'</head>');return out.replace(/<body([^>]*)>/i,'<body$1>'+adsense.code);
-}
+function addThree(html,key){const top=ad(key),mid=ad(key),bottom=ad(key);let out=html;const main=/<main\b([^>]*)>([\s\S]*?)<\/main>/i.exec(out);if(main){const inner=main[2],target=inner.length*.55,re=/<\/(?:section|article|div)>/gi,positions=[];let m;while((m=re.exec(inner)))if(m.index>inner.length*.3&&m.index<inner.length*.75)positions.push(m.index+m[0].length);const pos=positions.length?positions.reduce((b,p)=>Math.abs(p-target)<Math.abs(b-target)?p:b,positions[0]):Math.floor(target);const withMid=inner.slice(0,pos)+mid+inner.slice(pos);out=out.slice(0,main.index)+`<main${main[1]}>${top}${withMid}</main>`+out.slice(main.index+main[0].length)}else out=out.replace(/<body([^>]*)>/i,"<body$1>"+top+mid);out=out.replace(/<\/body>/i,bottom+"</body>");return out}
+function injectSocialScript(html){return html.replace(/<\/body>/i,'<script src="/social-media.js?v=1"></script></body>')}
+function injectBrandCss(html,path){if(path.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(path))return html;const css='<style id="ak-public-brand-size">.headin .brand,.navin .brand{margin-right:auto!important}.headin,.navin{justify-content:flex-start!important}.headin .brand img,.navin .brand img{width:280px!important;height:70px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}@media(max-width:700px){.headin .brand img,.navin .brand img{width:280px!important;height:70px!important}.headin,.navin{min-height:82px!important}}@media(max-width:430px){.headin .brand img,.navin .brand img{width:280px!important;height:70px!important}}</style>';return /<\/head>/i.test(html)?html.replace(/<\/head>/i,css+'</head>'):html.replace(/<body([^>]*)>/i,'<body$1>'+css)}
+function injectAdsense(html,adsense,path){if(path.startsWith("/api/")||/^\/admin(?:\.html)?\/?$/i.test(path)||!adsense?.enabled||!adsense?.code)return html;let out=html.replace(/<script[^>]+pagead2\.googlesyndication\.com\/pagead\/js\?client=ca-pub-\d{16}[^>]*><\/script>/gi,"");if(/<\/head>/i.test(out))return out.replace(/<\/head>/i,adsense.code+'</head>');return out.replace(/<body([^>]*)>/i,'<body$1>'+adsense.code)}
+
+function blogCss(){return `<style>:root{--b:#1677ff;--c:#16c9e8;--t:#0a1628;--m:#68778b;--l:#e4eaf2}*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--t);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.bk-nav{border-bottom:1px solid var(--l);background:#fff;position:sticky;top:0;z-index:5}.bk-in{max-width:1040px;margin:auto;min-height:78px;padding:0 18px;display:flex;align-items:center}.bk-logo{margin-right:auto}.bk-logo img{width:280px;height:70px;object-fit:contain;object-position:left center}.bk-nav a{font-size:12px;font-weight:800;text-decoration:none;color:var(--m);margin-left:15px}.bk-wrap{max-width:1040px;margin:auto;padding:0 18px}.bk-hero{text-align:center;padding:58px 0 35px}.bk-hero h1{font-size:46px;letter-spacing:-2px;margin:0}.bk-hero p{max-width:650px;margin:12px auto;color:var(--m);font-size:13px;line-height:1.7}.bk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:18px 0 65px}.bk-card{display:block;text-decoration:none;border:1px solid var(--l);border-radius:16px;padding:20px;background:#fff;transition:.18s}.bk-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(18,38,68,.08)}.bk-card time{font-size:9px;color:var(--b);font-weight:850}.bk-card h2{font-size:16px;margin:9px 0 7px}.bk-card p{font-size:11px;line-height:1.7;color:var(--m);margin:0}.bk-tag{display:inline-block;margin-top:11px;padding:5px 8px;border-radius:999px;background:#edf5ff;color:var(--b);font-size:9px;font-weight:800}.bk-empty{text-align:center;padding:35px;border:1px dashed #cbd8e8;border-radius:16px;color:var(--m);font-size:12px;grid-column:1/-1}.bk-article{max-width:800px;margin:auto;padding:58px 18px 70px}.bk-article .meta{color:var(--b);font-size:10px;font-weight:850}.bk-article h1{font-size:46px;letter-spacing:-2px;line-height:1.1;margin:12px 0}.bk-excerpt{font-size:15px;color:var(--m);line-height:1.75;margin:0 0 30px}.bk-content{font-size:14px;line-height:1.9;color:#24364e}.bk-content p{margin:0 0 18px}.bk-back{display:inline-block;margin-bottom:24px;text-decoration:none;color:var(--b);font-size:11px;font-weight:850}.bk-foot{border-top:1px solid var(--l);padding:24px 18px;text-align:center;color:var(--m);font-size:10px}@media(max-width:700px){.bk-grid{grid-template-columns:1fr}.bk-hero h1,.bk-article h1{font-size:36px}.bk-logo img{width:280px;height:70px}.bk-nav a{margin-left:9px}}</style>`}
+function blogHeader(){return `<header class="bk-nav"><div class="bk-in"><a class="bk-logo" href="/"><img src="/LogoName.png" alt="AkhiSave"></a><a href="/">Home</a><a href="/image-resizer.html">Tools</a></div></header>`}
+function blogFooter(){return `<footer class="bk-foot">© 2026 AkhiSave · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/contact.html">Contact</a></footer>`}
+function blogIndex(posts){const cards=posts.map(p=>`<a class="bk-card" href="/blog/${encodeURIComponent(p.slug)}"><time>${esc(p.date||'')}</time><h2>${esc(p.title)}</h2><p>${esc(p.excerpt||'Read the latest AkhiSave guide.')}</p><span class="bk-tag">${esc(p.category||'Guide')}</span></a>`).join('');return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AkhiSave Blog – Guides & How-Tos</title><meta name="description" content="Practical guides and how-to articles from AkhiSave."><meta name="robots" content="index,follow"><link rel="canonical" href="https://akhisave.online/blog"></head><body>${blogCss()}${blogHeader()}<main class="bk-wrap"><section class="bk-hero"><h1>AkhiSave Blog</h1><p>Practical guides, how-tos and useful tips for everyday online tools.</p></section><section class="bk-grid">${cards||'<div class="bk-empty">New AkhiSave guides are coming soon.</div>'}</section></main>${blogFooter()}</body></html>`}
+function blogArticle(p){const paras=String(p.content||'').split(/\n\s*\n/).map(x=>`<p>${esc(x).replace(/\n/g,'<br>')}</p>`).join('');const title=esc(p.seoTitle||p.title),desc=esc(p.seoDescription||p.excerpt||p.title);const schema=JSON.stringify({"@context":"https://schema.org","@type":"BlogPosting","headline":p.title,"datePublished":p.date,"dateModified":p.date,"author":{"@type":"Organization","name":"AkhiSave","url":"https://akhisave.online/"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://akhisave.online/blog/"+p.slug}});return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${desc}"><meta name="robots" content="index,follow"><link rel="canonical" href="https://akhisave.online/blog/${encodeURIComponent(p.slug)}"><script type="application/ld+json">${schema}</script></head><body>${blogCss()}${blogHeader()}<main class="bk-article"><a class="bk-back" href="/blog">← Back to Blog</a><div class="meta">${esc(p.category||'Guide')} · ${esc(p.date||'')} · ${esc(p.author||'AkhiSave')}</div><h1>${esc(p.title)}</h1><p class="bk-excerpt">${esc(p.excerpt||'')}</p><article class="bk-content">${paras}</article></main>${blogFooter()}</body></html>`}
+async function sitemapXml(env){const posts=(await readPosts(env)).filter(p=>p.published!==false);const urls=['https://akhisave.online/','https://akhisave.online/image-resizer.html','https://akhisave.online/privacy.html','https://akhisave.online/terms.html','https://akhisave.online/dmca.html','https://akhisave.online/contact.html','https://akhisave.online/blog',...posts.map(p=>'https://akhisave.online/blog/'+encodeURIComponent(p.slug))];return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(u=>`<url><loc>${esc(u)}</loc></url>`).join('')}</urlset>`}
 
 export default {async fetch(request,env,ctx){
-  const url=new URL(request.url);
-  if(url.pathname==='/api/admin/adsense')return adminAdsense(request,env,ctx);
-  if(url.pathname==='/api/admin/social-links'||url.pathname==='/api/social-links')return socialApi(request,env,ctx);
-  const r=await base.fetch(request,env,ctx);if(request.method!=="GET")return r;
-  if(/^\/admin(?:\.html)?\/?$/i.test(url.pathname)){
-    const ct=r.headers.get("content-type")||"";if(!ct.includes("text/html"))return r;let html=await r.text();html=html.replace(/<\/body>/i,'<script src="/admin-adsense.js?v=4"></script><script src="/admin-social.js?v=1"></script></body>');const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");return new Response(html,{status:r.status,headers:h});
-  }
-  if(url.pathname.startsWith("/api/"))return r;
-  const ct=r.headers.get("content-type")||"";if(!ct.includes("text/html"))return r;
-  const key=await getKey(env),adsense=await getAdsense(env),html=removeAds(await r.text()),finalHtml=injectAdsense(injectBrandCss(injectSocialScript(injectResizerSeoScript(injectSeo(injectResizerUi(addThree(html,key),url.pathname),url.pathname),url.pathname),url.pathname),url.pathname),adsense,url.pathname);
-  const h=new Headers(r.headers);h.delete("content-length");h.set("Cache-Control","no-store");return new Response(finalHtml,{status:r.status,headers:h});
+ const url=new URL(request.url);
+ if(url.pathname==='/api/admin/adsense')return adminAdsense(request,env,ctx);
+ if(url.pathname==='/api/admin/social-links'||url.pathname==='/api/social-links')return socialApi(request,env,ctx);
+ if(url.pathname==='/api/blog-posts'&&request.method==='GET')return blogApi(request,env,ctx);
+ if(url.pathname==='/api/admin/blog')return blogApi(request,env,ctx);
+ if(request.method==='GET'&&url.pathname==='/sitemap.xml')return new Response(await sitemapXml(env),{status:200,headers:{'Content-Type':'application/xml; charset=UTF-8','Cache-Control':'no-store'}});
+ if(request.method==='GET'&&(url.pathname==='/blog'||url.pathname==='/blog/')){const posts=(await readPosts(env)).filter(p=>p.published!==false).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));return new Response(blogIndex(posts),{status:200,headers:{'Content-Type':'text/html; charset=UTF-8','Cache-Control':'no-store'}})}
+ if(request.method==='GET'&&url.pathname.startsWith('/blog/')){const slug=slugify(decodeURIComponent(url.pathname.slice(6)));const p=(await readPosts(env)).find(x=>x.slug===slug&&x.published!==false);if(!p)return new Response('<h1>Not Found</h1>',{status:404,headers:{'Content-Type':'text/html; charset=UTF-8'}});return new Response(blogArticle(p),{status:200,headers:{'Content-Type':'text/html; charset=UTF-8','Cache-Control':'no-store'}})}
+ const r=await base.fetch(request,env,ctx);if(request.method!=="GET")return r;
+ if(/^\/admin(?:\.html)?\/?$/i.test(url.pathname)){const ct=r.headers.get('content-type')||'';if(!ct.includes('text/html'))return r;let html=await r.text();html=html.replace(/<\/body>/i,'<script src="/admin-adsense.js?v=4"></script><script src="/admin-social.js?v=1"></script><script src="/admin-blog.js?v=1"></script></body>');const h=new Headers(r.headers);h.delete('content-length');h.set('Cache-Control','no-store');return new Response(html,{status:r.status,headers:h})}
+ if(url.pathname.startsWith("/api/"))return r;
+ const ct=r.headers.get('content-type')||'';if(!ct.includes('text/html'))return r;
+ const key=await getKey(env),adsense=await getAdsense(env),html=removeAds(await r.text()),finalHtml=injectAdsense(injectBrandCss(injectSocialScript(addThree(html,key),url.pathname),url.pathname),adsense,url.pathname);
+ const h=new Headers(r.headers);h.delete('content-length');h.set('Cache-Control','no-store');return new Response(finalHtml,{status:r.status,headers:h});
 }};
