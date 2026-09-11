@@ -20,7 +20,6 @@
     const settings = document.getElementById('settings');
     if (!settings || settings.dataset.akSettingsFixed) return;
     settings.dataset.akSettingsFixed = '1';
-    settings.style.removeProperty('display');
 
     const style = document.createElement('style');
     style.textContent = `
@@ -48,6 +47,7 @@
     const sections = [...settings.querySelectorAll('.section')];
     if (sections[0]) sections[0].style.display = 'none';
     if (sections[1]) sections[1].style.display = 'none';
+    settings.style.removeProperty('display');
 
     const general = document.createElement('section');
     general.className = 'ak-settings-general';
@@ -79,54 +79,59 @@
     settings.insertBefore(seo, ads.nextSibling);
 
     const $ = id => document.getElementById(id);
-    async function getSettings() {
-      const r = await fetch('/api/admin/settings', {credentials:'same-origin', cache:'no-store'});
-      const d = await r.json();
-      if (!r.ok || d.success === false) throw Error(d.error || 'Could not load settings');
-      return d.settings || d;
-    }
-    function fill(s) {
-      $('akSettingsMaintenance').checked = !!s.maintenance;
-      $('akSettingsAnnouncement').value = s.announcement || '';
-      const a = s.ads || {};
-      const adsterra = a.adsterra || {};
-      const monetag = a.monetag || {};
-      $('akAdsMaster').checked = a.enabled === true;
-      $('akAdsAdsterra').checked = adsterra.enabled === true;
-      $('akAdsAdsterraCode').value = adsterra.code || '';
-      $('akAdsMonetag').checked = monetag.enabled === true;
-      $('akAdsMonetagZone').value = monetag.zone || '11717101';
-      const seo = s.seo || {};
-      $('akSeoTitle').value = seo.title || '';
-      $('akSeoDescription').value = seo.description || '';
-      $('akSeoKeywords').value = seo.keywords || '';
-      $('akSeoOgTitle').value = seo.ogTitle || seo.title || '';
-      $('akSeoOgDescription').value = seo.ogDescription || seo.description || '';
-      $('akSeoOgImage').value = seo.ogImage || '';
-    }
-    async function save(patch, msgId) {
-      try {
-        const s = await getSettings();
-        Object.keys(patch).forEach(k => s[k] = patch[k]);
-        const w = await fetch('/api/admin/settings', {method:'PUT', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:JSON.stringify(s), cache:'no-store'});
-        const x = await w.json();
-        if (!w.ok || x.success === false) throw Error(x.error || 'Could not save settings');
-        const saved = x.settings || x;
-        if (patch.ads && (!saved.ads || saved.ads.enabled !== patch.ads.enabled)) throw Error('Ads setting was not persisted. Deploy the latest Worker code first.');
-        if (patch.ads && saved.ads) {
-          if (Boolean(saved.ads.adsterra?.enabled) !== Boolean(patch.ads.adsterra?.enabled)) throw Error('Adsterra setting was not persisted. Deploy the latest Worker code first.');
-          if (Boolean(saved.ads.monetag?.enabled) !== Boolean(patch.ads.monetag?.enabled)) throw Error('Monetag setting was not persisted. Deploy the latest Worker code first.');
-        }
-        if (patch.ads) fill(saved);
-        $(msgId).textContent = 'Settings saved.';
-        refreshDashboardMaintenance();
-      } catch (e) { $(msgId).textContent = e.message; }
-    }
-    $('akSettingsSave').onclick = () => save({maintenance:$('akSettingsMaintenance').checked, announcement:$('akSettingsAnnouncement').value}, 'akSettingsMsg');
-    $('akAdsSave').onclick = () => save({ads:{enabled:$('akAdsMaster').checked,adsterra:{enabled:$('akAdsAdsterra').checked,code:$('akAdsAdsterraCode').value,placement:'body-end',pages:'all'},monetag:{enabled:$('akAdsMonetag').checked,zone:$('akAdsMonetagZone').value,code:'',placement:'head',pages:'all'}}}, 'akAdsMsg');
-    $('akSeoSave').onclick = () => save({seo:{title:$('akSeoTitle').value,description:$('akSeoDescription').value,keywords:$('akSeoKeywords').value,ogTitle:$('akSeoOgTitle').value,ogDescription:$('akSeoOgDescription').value,ogImage:$('akSeoOgImage').value}}, 'akSeoMsg');
-    getSettings().then(fill).catch(e => { $('akSettingsMsg').textContent = e.message; $('akAdsMsg').textContent = e.message; $('akSeoMsg').textContent = e.message; });
+    async function getSettings() { const r = await fetch('/api/admin/settings', {credentials:'same-origin', cache:'no-store'}); const d = await r.json(); if (!r.ok || d.success === false) throw Error(d.error || 'Could not load settings'); return d.settings || d; }
+    function fill(s) { $('akSettingsMaintenance').checked=!!s.maintenance; $('akSettingsAnnouncement').value=s.announcement||''; const a=s.ads||{}, adsterra=a.adsterra||{}, monetag=a.monetag||{}; $('akAdsMaster').checked=a.enabled===true; $('akAdsAdsterra').checked=adsterra.enabled===true; $('akAdsAdsterraCode').value=adsterra.code||''; $('akAdsMonetag').checked=monetag.enabled===true; $('akAdsMonetagZone').value=monetag.zone||'11717101'; const seo=s.seo||{}; $('akSeoTitle').value=seo.title||''; $('akSeoDescription').value=seo.description||''; $('akSeoKeywords').value=seo.keywords||''; $('akSeoOgTitle').value=seo.ogTitle||seo.title||''; $('akSeoOgDescription').value=seo.ogDescription||seo.description||''; $('akSeoOgImage').value=seo.ogImage||''; }
+    async function save(patch,msgId){try{const s=await getSettings();Object.keys(patch).forEach(k=>s[k]=patch[k]);const w=await fetch('/api/admin/settings',{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(s),cache:'no-store'});const x=await w.json();if(!w.ok||x.success===false)throw Error(x.error||'Could not save settings');const saved=x.settings||x;if(patch.ads&&(!saved.ads||saved.ads.enabled!==patch.ads.enabled))throw Error('Ads setting was not persisted. Deploy the latest Worker code first.');if(patch.ads&&saved.ads){if(Boolean(saved.ads.adsterra?.enabled)!==Boolean(patch.ads.adsterra?.enabled))throw Error('Adsterra setting was not persisted. Deploy the latest Worker code first.');if(Boolean(saved.ads.monetag?.enabled)!==Boolean(patch.ads.monetag?.enabled))throw Error('Monetag setting was not persisted. Deploy the latest Worker code first.');}if(patch.ads)fill(saved);$(msgId).textContent='Settings saved.';refreshDashboardMaintenance()}catch(e){$(msgId).textContent=e.message}}
+    $('akSettingsSave').onclick=()=>save({maintenance:$('akSettingsMaintenance').checked,announcement:$('akSettingsAnnouncement').value},'akSettingsMsg');
+    $('akAdsSave').onclick=()=>save({ads:{enabled:$('akAdsMaster').checked,adsterra:{enabled:$('akAdsAdsterra').checked,code:$('akAdsAdsterraCode').value,placement:'body-end',pages:'all'},monetag:{enabled:$('akAdsMonetag').checked,zone:$('akAdsMonetagZone').value,code:'',placement:'head',pages:'all'}}},'akAdsMsg');
+    $('akSeoSave').onclick=()=>save({seo:{title:$('akSeoTitle').value,description:$('akSeoDescription').value,keywords:$('akSeoKeywords').value,ogTitle:$('akSeoOgTitle').value,ogDescription:$('akSeoOgDescription').value,ogImage:$('akSeoOgImage').value}},'akSeoMsg');
+    getSettings().then(fill).catch(e=>{$('akSettingsMsg').textContent=e.message;$('akAdsMsg').textContent=e.message;$('akSeoMsg').textContent=e.message});
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fixAdminTabs);
-  else fixAdminTabs();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fixAdminTabs); else fixAdminTabs();
+
+  function modernAdminShell(){
+    if(document.documentElement.dataset.akModernAdmin==='1')return;
+    document.documentElement.dataset.akModernAdmin='1';
+    const style=document.createElement('style');
+    style.id='ak-modern-admin-style';
+    style.textContent=`
+      :root{--ak-blue:#1677ff;--ak-cyan:#16c9e8;--ak-text:#0a1628;--ak-muted:#68778b;--ak-line:#e4eaf2;--ak-soft:#f7faff;--ak-shadow:0 14px 38px rgba(18,38,68,.07)}
+      body{background:#f7faff!important;color:var(--ak-text)!important}.topbar{box-shadow:0 1px 0 var(--ak-line),0 8px 30px rgba(18,38,68,.04)!important}.card,.statcard,.section,.feature,.aks-card,.aks-stat{border-radius:18px!important;box-shadow:var(--ak-shadow)!important}.btn,.iconbtn,.logout,.mini{border-radius:11px!important;transition:.18s ease!important}.btn:hover,.iconbtn:hover,.logout:hover,.mini:hover{transform:translateY(-1px)}.btn.primary{background:linear-gradient(135deg,var(--ak-blue),var(--ak-cyan))!important;box-shadow:0 8px 20px rgba(22,119,255,.16)!important}.field input,.field textarea,.field select,.aks-input{border-radius:11px!important}.drawer{box-shadow:18px 0 45px rgba(18,38,68,.08)!important}.drawer a{border-radius:10px!important;margin:3px 8px!important}.bottom{height:72px!important;padding:7px 10px!important;background:rgba(255,255,255,.97)!important;box-shadow:0 -10px 30px rgba(18,38,68,.07)!important;backdrop-filter:blur(16px)!important}.bottomin{max-width:620px!important;height:100%!important;margin:auto!important;display:grid!important;grid-template-columns:repeat(5,1fr)!important;gap:5px!important}.bottom button,.bottom .bottom-btn{border:0!important;background:transparent!important;border-radius:13px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;font-size:9px!important;font-weight:800!important;color:#7a8798!important}.bottom button.active,.bottom .bottom-btn.active{background:#edf5ff!important;color:var(--ak-blue)!important}.ak-bottom-icon{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.ak-blog-tab{position:relative}.ak-blog-tab:after{content:'NEW';position:absolute;top:4px;right:10px;font-size:6px;line-height:11px;padding:0 4px;border-radius:999px;background:#1677ff;color:#fff}.ak-modern-blog-tab{display:none!important}
+      #akAdminBlogTab{min-height:50vh}.ak-admin-page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}.ak-admin-page-head h1{font-size:25px;letter-spacing:-1px;margin:0}.ak-admin-page-head p{margin:5px 0 0;color:var(--ak-muted);font-size:11px}
+      @media(min-width:701px){.bottom{display:none!important}}@media(max-width:700px){main.wrap{padding-bottom:92px!important}.topbar{position:sticky!important;top:0!important}.drawer{max-width:88vw!important}.bottom{display:block!important}.ak-admin-page-head{margin-top:3px}.ak-admin-page-head h1{font-size:21px}}
+    `;
+    document.head.appendChild(style);
+
+    const icon=(name)=>({home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',tools:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',blog:'<path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 4v12a4 4 0 0 0 4 4"/><path d="M8 8h7M8 11h7"/>',settings:'<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/>',more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>',refresh:'<path d="M20 11a8 8 0 1 0 1 4"/><path d="M20 4v7h-7"/>',logout:'<path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5"/><path d="m15 8 4 4-4 4M19 12H9"/>'}[name]||'');
+    const svg=n=>`<svg class="ak-bottom-icon" viewBox="0 0 24 24" aria-hidden="true">${icon(n)}</svg>`;
+
+    const bottom=document.querySelector('.bottom');
+    if(bottom){
+      const bin=bottom.querySelector('.bottomin')||bottom;
+      const tabs=[['dashboard','Dashboard','home'],['tools','Tools','tools'],['blog','Blog','blog'],['settings','Settings','settings'],['more','More','more']];
+      bin.innerHTML=tabs.map(([id,label,ic])=>`<button type="button" class="bottom-btn ${id==='blog'?'ak-blog-tab':''}" data-tab="${id}" aria-label="${label}">${svg(ic)}<span>${label}</span></button>`).join('');
+      bin.querySelectorAll('.bottom-btn').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const tab=btn.dataset.tab;if(tab==='more'){document.getElementById('openDrawer')?.click();return}if(typeof window.go==='function')window.go(tab);else{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id===tab));document.querySelectorAll('.bottom-btn').forEach(x=>x.classList.toggle('active',x===btn))}}));
+    }
+
+    const drawer=document.getElementById('drawer');
+    if(drawer){
+      const open=document.getElementById('openDrawer'),close=document.getElementById('closeDrawer');
+      if(open)open.innerHTML=svg('menu');
+      if(close)close.innerHTML=svg('close');
+      const refresh=document.getElementById('refresh');if(refresh)refresh.innerHTML=svg('refresh');
+      const logout=document.getElementById('logout');if(logout)logout.innerHTML=svg('logout');
+    }
+
+    function createBlogTab(){
+      const settings=document.getElementById('settings'),panel=settings?.querySelector('.ak-blog-panel');
+      if(!settings||!panel||document.getElementById('akAdminBlogTab'))return !!document.getElementById('akAdminBlogTab');
+      const tab=document.createElement('section');tab.id='akAdminBlogTab';tab.className='tab';tab.innerHTML='<div class="ak-admin-page-head"><div><h1>Blog</h1><p>Write, publish and manage AkhiSave articles.</p></div><button type="button" class="btn primary" id="akBlogTopNew">Create New Post</button></div>';
+      settings.parentNode.insertBefore(tab,settings);tab.appendChild(panel);panel.classList.add('ak-modern-blog-panel');
+      document.getElementById('akBlogTopNew')?.addEventListener('click',()=>document.getElementById('akBlogNew')?.click());
+      return true;
+    }
+    let tries=0;const timer=setInterval(()=>{if(createBlogTab()||++tries>30)clearInterval(timer)},250);
+    const observer=new MutationObserver(()=>createBlogTab());observer.observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',modernAdminShell);else modernAdminShell();
 })();
