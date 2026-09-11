@@ -1,6 +1,6 @@
 {
   "name": "akhisave",
-  "main": "ad-layout-fix.js",
+  "main": "blog-polish-worker.js",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": ".",
