@@ -7,6 +7,30 @@ function injectCss(html, href){
 }
 
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const attr=v=>esc(v).replace(/`/g,'&#96;');
+
+function injectBlogSeo(html,path,posts){
+  if(!path.startsWith('/blog')) return html;
+  const isArticle=/^\/blog\/[^/]+\/?$/i.test(path);
+  const canonical=isArticle
+    ? `https://akhisave.online/blog/${encodeURIComponent(decodeURIComponent(path.replace(/^\/blog\//,'').replace(/\/$/,'')))}`
+    : 'https://akhisave.online/blog';
+  const currentSlug=isArticle?decodeURIComponent(path.replace(/^\/blog\//,'').replace(/\/$/,'')):'';
+  const post=(Array.isArray(posts)?posts:[]).find(p=>p&&p.slug===currentSlug&&p.published!==false);
+  const title=post?.seoTitle||post?.title||'AkhiSave Blog – Practical Guides & Tips';
+  const description=post?.seoDescription||post?.excerpt||'Practical guides, tips and useful information from AkhiSave.';
+  let out=html;
+  out=out.replace(/<link[^>]+rel=["']canonical["'][^>]*>/gi,'');
+  out=out.replace(/<meta[^>]+name=["']description["'][^>]*>/gi,'');
+  out=out.replace(/<meta[^>]+property=["']og:title["'][^>]*>/gi,'');
+  out=out.replace(/<meta[^>]+property=["']og:description["'][^>]*>/gi,'');
+  out=out.replace(/<meta[^>]+property=["']og:url["'][^>]*>/gi,'');
+  out=out.replace(/<meta[^>]+property=["']og:type["'][^>]*>/gi,'');
+  const meta=`<link rel="canonical" href="${attr(canonical)}"><meta name="description" content="${attr(description)}"><meta property="og:title" content="${attr(title)}"><meta property="og:description" content="${attr(description)}"><meta property="og:url" content="${attr(canonical)}"><meta property="og:type" content="${isArticle?'article':'website'}">`;
+  const schema=isArticle&&post?`<script type="application/ld+json" id="ak-blog-posting-schema">${JSON.stringify({"@context":"https://schema.org","@type":"BlogPosting","headline":String(post.title||title),"description":String(description),"url":canonical,"datePublished":String(post.date||''),"dateModified":String(post.date||''),"author":{"@type":"Person","name":String(post.author||'AkhiSave')},"publisher":{"@type":"Organization","name":"AkhiSave","url":"https://akhisave.online"},"mainEntityOfPage":{"@type":"WebPage","@id":canonical}})}</script>`:'';
+  out=out.replace(/<script[^>]+id=["']ak-blog-posting-schema["'][\s\S]*?<\/script>/gi,'');
+  return /<\/head>/i.test(out)?out.replace(/<\/head>/i,meta+schema+'</head>'):out;
+}
 
 function injectBlogInternalLinks(html,path,posts){
   if(!path.startsWith('/blog')) return html;
@@ -33,7 +57,7 @@ function injectBlogSeoStyles(html){
 }
 
 export default {
-  async fetch(request, env, ctx){
+  async fetch(request,env,ctx){
     const response=await app.fetch(request,env,ctx);
     const path=new URL(request.url).pathname;
     if(request.method!=='GET') return response;
@@ -47,6 +71,7 @@ export default {
       html=injectCss(html,'/blog-polish.css?v=2');
       let posts=[];
       try{if(env.AKHISAVE_SETTINGS){const raw=await env.AKHISAVE_SETTINGS.get('blog_posts');const data=raw?JSON.parse(raw):[];posts=Array.isArray(data)?data:[];}}catch{}
+      html=injectBlogSeo(html,path,posts);
       html=injectBlogInternalLinks(html,path,posts);
       html=injectBlogSeoStyles(html);
     }
