@@ -1,18 +1,14 @@
 import app from "./blog-polish-worker.js";
 import rootApp from "./ad-layout-fix.js";
 
-async function forceHomepage(request,env,ctx){
-  const u=new URL(request.url);
-  const assetUrl=new URL("/index.html",u);
-  const assetRequest=new Request(assetUrl.toString(),request);
-  return rootApp.fetch(assetRequest,env,ctx);
-}
-
 export default {
   async fetch(request,env,ctx){
     const u=new URL(request.url);
     if(request.method==="GET"&&(u.pathname==="/"||u.pathname==="/index.html")){
-      const response=await forceHomepage(request,env,ctx);
+      // Keep the public homepage on the normal root request path.
+      // Rewriting / to /index.html can trigger platform index canonicalization.
+      const homepageRequest=new Request(request);
+      const response=await rootApp.fetch(homepageRequest,env,ctx);
       const type=response.headers.get("content-type")||"";
       if(!type.includes("text/html"))return response;
       const html=await response.text();
